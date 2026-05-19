@@ -1,0 +1,214 @@
+* {
+	padding: 0;
+	margin: 0;
+	position: relative;
+}
+
+body,
+html {
+	height: 100%;
+	background-color: #484162;
+}
+
+input {
+	padding: .2em;
+}
+
+input[disabled] {
+	display: none;
+}
+
+table {
+	text-align: left;
+	white-space: nowrap;
+	margin: 0 auto;
+	min-width: 50%;
+}
+
+th {
+	background-color: #daebeb;
+	top: 0;
+	position: sticky;
+	z-index: 1;
+}
+
+th,
+td {
+	border-bottom: #e8e8e8 1px solid;
+	padding: .2em;
+}
+
+tr:nth-child(odd) {
+	background-color: #f7f7f7;
+}
+
+tr:nth-child(even) {
+	background-color: #ffffff;
+}
+
+tr:hover {
+	background-color: #daebeb
+}
+
+table a {
+	color: #000000;
+}
+
+table .tableBlue {
+	background-color: #85d1ff;
+}
+
+table .tableGreen {
+	background-color: #aaff7f;
+}
+
+.tips {
+	background-color: #e9fdff;
+	color: #2c9dff;
+	font-size: 14px;
+	line-height: 1.5em;
+	text-align: center;
+}
+
+.tips2 {
+	background-color: #eee;
+	color: #888;
+	font-size: 14px;
+	line-height: 1.5em;
+	text-align: center;
+}
+
+.tips a,
+.tips2 a {
+	color: blue;
+}
+
+#main {
+	width: 100%;
+	height: 100%;
+	max-width: 1350px;
+	margin: 0 auto;
+	box-shadow: #1c1634 0 0 10px;
+}
+
+#menu {
+	position: absolute;
+	height: 100%;
+	background-color: #1c1634;
+}
+
+.menuButton {
+	width: 40px;
+	line-height: 40px;
+	font-size: 14px;
+	text-align: center;
+	color: #ffffff;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+.menuButton:hover {
+	background-color: #ffaa00;
+}
+
+#content {
+	height: 100%;
+	margin-left: 40px;
+	overflow: auto;
+	background-color: #ffffff;
+	width: calc(100% - 40px);
+}
+
+h2 {
+	color: #2f4c58;
+	text-align: center;
+	line-height: 5em;
+}
+
+#tipsClick {
+	position: fixed;
+	bottom: 5px;
+	right: 5px;
+	background-color: rgba(218, 235, 235, 0.9);
+	z-index: 10;
+	padding: .5em;
+	font-size: 14px;
+	display: none;
+	max-width: 60%;
+}
+
+.tipsClick::after {
+	content: "?";
+	display: inline-block;
+	background-color: #ff8000;
+	color: #ffff00;
+	font-weight: bolder;
+	font-size: 14px;
+	width: 1em;
+	height: 1em;
+	line-height: 1em;
+	border-radius: 1em;
+	text-align: center;
+}
+
+.center {
+	text-align: center;
+}
+
+#tipsClick a {
+	background-color: #64ddc7;
+	color: #ffffff;
+	padding: 0 .5em;
+	border-radius: .5em;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+	white-space: nowrap;
+}
+
+#tipsClick a:hover {
+	background-color: #ffaa00;
+}
+
+.sort::after {
+	content: "↓";
+	color: #ffffff;
+}
+
+.sort::before {
+	content: "↑";
+	color: #ffffff;
+}
+.sortUp::before{
+	color: #2f4c58;
+}
+.sortDown::after{
+	color: #2f4c58;
+}
+#tipsClick .close {
+	width: 24px;
+	height: 24px;
+	background-color: #64ddc7;
+	position: absolute;
+	right: -5px;
+	top: -5px;
+	border-radius: 15px;
+	border: #ffffff 2px solid;
+	text-align: center;
+	font-weight: bolder;
+}
+
+#tipsClick .close::after {
+	content: "x";
+	font-size: 24px;
+	line-height: 22px;
+	color: #ffffff;
+}
+
+#tipsClick .close:hover {
+	background-color: #ff8000;
+}
+
+#tipsClick strong a {
+	color: #ffff00;
+}

@@ -1,0 +1,5 @@
+
+#roomDataTable th:nth-child(3),
+#roomDataTable td:nth-child(3) {
+	display: none;
+}
