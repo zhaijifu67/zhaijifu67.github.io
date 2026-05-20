@@ -7,11 +7,11 @@ document.addEventListener('DOMContentLoaded', function() {
 					<div class="d-inline">宅爷的工具箱</div>
 				</a>
 				<button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-					data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+					data-bs-target="#zhaiNavbarMain" aria-controls="zhaiNavbarMain"
 					aria-expanded="false" aria-label="Toggle navigation">
 					<span class="navbar-toggler-icon"></span>
 				</button>
-				<!-- <div class="collapse navbar-collapse" id="navbarSupportedContent">
+				<!-- <div class="collapse navbar-collapse" id="zhaiNavbarMain">
 					<ul class="navbar-nav me-auto mb-2 mb-lg-0">
 						<li class="nav-item">
 							<a class="nav-link active" aria-current="page" href="#">Home</a>
@@ -43,7 +43,26 @@ document.addEventListener('DOMContentLoaded', function() {
 					</form>
 				</div> -->
 			</div>
-		</nav>
-	`
-	document.body.insertBefore(nav, document.body.firstChild);
+		</nav>`
+	document.body.insertBefore(nav.children[0], document.body.firstChild);
 });
+
+function loadBootstrap() {
+  // 避免重复加载
+  if (document.querySelector('link[href*="bootstrap.min.css"]')) return;
+  if (document.querySelector('script[src*="bootstrap.bundle.min.js"]')) return;
+
+  // 加载 Bootstrap CSS
+  const cssLink = document.createElement('link');
+  cssLink.rel = 'stylesheet';
+  cssLink.href = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css';
+  document.head.appendChild(cssLink);
+
+  // 加载 Bootstrap JS（包含 Popper）
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js';
+  document.head.appendChild(script);
+}
+
+// 调用即可
+loadBootstrap();
