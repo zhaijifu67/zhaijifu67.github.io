@@ -85,7 +85,7 @@ window.TOOLS = [{
 				icon: '🎨',
 				title: '随机配色工具',
 				desc: '根据所选颜色生成其他颜色进行搭配',
-				href: './random-color-scheme/',
+				href: './tools/random-color-scheme/',
 				accent: '#8B5CF6'
 			}
 		]
