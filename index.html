@@ -1,175 +1,66 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 	<head>
 		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>宅爷的工具箱</title>
-		<script src="index/js/main.js"></script>
+		<meta name="description" content="宅爷的工具箱 —— 游戏、跑团、图片等在线工具集合">
+		<link rel="icon" href="https://zhaijifu67.github.io/favicon.ico">
+		<link rel="stylesheet" href="assets/css/base.css">
+		<link rel="stylesheet" href="assets/css/home.css">
+		<script src="assets/js/theme.js"></script>
 	</head>
-	<body class="bg-body-tertiary">
-		<div class="container-xxl">
-			<div class="row py-3">
-				<div class="col-12 col-lg-8 mb-3">
-					<div id="carouselExampleAutoplaying" class="carousel slide" data-bs-ride="carousel">
-						<div class="carousel-inner rounded">
-							<div class="carousel-item active" data-bs-interval="3000">
-								<a href="./dahanghai/">
-									<img src="image/dahanghai.webp" class="d-block w-100" alt="大航海">
-								</a>
-							</div>
-							<div class="carousel-item" data-bs-interval="3000">
-								<a href="http://www.zzhai.top/ffxiv/">
-									<img src="image/ffxiv.webp" class="d-block w-100" alt="弹琴达人">
-								</a>
-							</div>
+	<body data-search="true">
+
+		<!-- 顶部栏由 header.js 注入，放在 body 最前面，避免闪烁 -->
+		<script src="assets/js/header.js" data-root="./"></script>
+
+		<main class="wrap">
+
+			<details class="notice">
+				<summary>
+					<span class="dot"></span>
+					<strong>2026.7.4</strong>
+					<span class="txt">表情包工具箱迁移成功，已改为纯静态实现，不再依赖服务器</span>
+					<span class="chev"></span>
+				</summary>
+
+				<div class="notice-body">
+					<article class="update">
+						<div class="update-meta">2026.7.4</div>
+						<div>
+							<h3>【表情包工具箱】迁移成功</h3>
+							<p>将原本必须借用服务器的功能修改为静态实现，不再需要服务器支持。</p>
+							<a class="go" href="./meme/">立即前往尝试 →</a>
 						</div>
-						<button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleAutoplaying"
-							data-bs-slide="prev">
-							<span class="carousel-control-prev-icon" aria-hidden="true"></span>
-							<span class="visually-hidden">Previous</span>
-						</button>
-						<button class="carousel-control-next" type="button" data-bs-target="#carouselExampleAutoplaying"
-							data-bs-slide="next">
-							<span class="carousel-control-next-icon" aria-hidden="true"></span>
-							<span class="visually-hidden">Next</span>
-						</button>
-					</div>
+					</article>
+
+					<article class="update">
+						<div class="update-meta">2026.5.20</div>
+						<div>
+							<h3>【跑团角色卡】功能迁移公告</h3>
+							<p>【尘箓跑团平台】已经投入运行，更好的支持手机操作，功能逐渐完善中，欢迎尝试使用~</p>
+							<p>本平台转移可以联系宅爷保存群组原始数据（json 格式）。</p>
+							<a class="go" href="https://chenshi-chenlu.cn/" target="_blank" rel="noopener">前往尘箓跑团平台
+								→</a>
+						</div>
+					</article>
 				</div>
-				<div class="col-12 col-lg-4 rounded mb-3">
-					<div class="card h-100">
-							<div class="d-flex align-items-start h-100">
-								<div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist"
-									aria-orientation="vertical">
-									<button class="nav-link active" id="v1-tab" data-bs-toggle="pill"
-										data-bs-target="#v1" type="button" role="tab" aria-controls="v1"
-										aria-selected="true">⭐2026.7.4</button>
-									<button class="nav-link" id="v2-tab" data-bs-toggle="pill" data-bs-target="#v2"
-										type="button" role="tab" aria-controls="v2"
-										aria-selected="false">⭐2026.5.20</button>
-								</div>
-								<div class="tab-content card-body bg-body-tertiary h-100" id="v-pills-tabContent">
-									<div class="tab-pane fade show active" id="v1" role="tabpanel"
-										aria-labelledby="v1-tab" tabindex="0">
-										<h5 class="card-title text-primary">【表情包工具箱】迁移成功</h5>
-										<p class="card-text">将原本必须借用服务器的功能修改为静态实现，不再需要服务器支持</p>
-										<a target="_blank" href="./meme/" class="btn btn-outline-primary m-3">立即前往尝试</a>
-									</div>
-									<div class="tab-pane fade" id="v2" role="tabpanel" aria-labelledby="v2-tab"
-										tabindex="0">
-										<h5 class="card-title text-primary">【跑团角色卡】功能迁移公告</h5>
-										<p class="card-text">【尘箓跑团平台】已经投入运行，更好的支持手机操作，功能逐渐完善中，欢迎尝试使用~</p>
-										<p class="card-text">本平台转移可以联系宅爷保存群组原始数据（json格式）</p>
-										<a target="_blank" href="https://chenshi-chenlu.cn/" class="btn btn-outline-primary m-3">前往尘箓跑团平台</a>
-									</div>
-								</div>
-							</div>
-					</div>
-				</div>
-				<div class="col-12 col-lg-4 col-md-6 mb-3">
-					<div class="card mb-3 h-100" style="background-color: #8262DC;">
-						<a class="btn p-0 h-100 text-light" href="https://afdian.com/a/zhaiye" target="_blank">
-							<div class="card-header"><img src="https://static.afdiancdn.com/favicon.ico" alt="爱发电" />
-								爱发电</div>
-							<div class="card-body">
-								<p class="card-text">点这里为宅爷的工具箱进行赞助~</p>
-							</div>
-						</a>
-					</div>
-				</div>
-				<h3>🎮 游戏工具箱</h3>
-				<div class="col-12 col-lg-4 col-md-6 mb-3">
-					<div class="card mb-3 h-100" style="background-color: #0DCAF0;">
-						<a class="btn p-0 h-100 text-dark" href="./dahanghai/">
-							<div class="card-header">⛵️ 大航海冒险工具箱</div>
-							<div class="card-body">
-								<p class="card-text">开罗游戏【大航海冒险物语】在线工具</p>
-							</div>
-						</a>
-					</div>
-				</div>
-				<div class="col-12 col-lg-4 col-md-6 mb-3">
-					<div class="card mb-3 h-100" style="background-color: #FECBA1;">
-						<a class="btn p-0 h-100 text-dark" href="http://www.zzhai.top/ffxiv/">
-							<div class="card-header">🎶️ FF14弹琴达人</div>
-							<div class="card-body">
-								<p class="card-text">游戏【最终幻想14】中乐器演奏制作的工具</p>
-							</div>
-						</a>
-					</div>
-				</div>
-				<div class="col-12 col-lg-4 col-md-6 mb-3">
-					<div class="card mb-3 h-100" style="background-color: #B02A37;">
-						<a class="btn p-0 h-100 text-light" href="./gbf/">
-							<div class="card-header">⚔️️ GBF工具箱</div>
-							<div class="card-body">
-								<p class="card-text">纯静态自定义战斗流</p>
-							</div>
-						</a>
-					</div>
-				</div>
-				<h3>🎲 跑团工具箱</h3>
-				<div class="col-12 col-lg-4 col-md-6 mb-3">
-					<div class="card mb-3 h-100" style="background-color:#FD7E14;">
-						<a class="btn p-0 h-100 text-light" href="http://www.zzhai.top/trpg/navigation">
-							<div class="card-header">📑 跑团Replay实用导航</div>
-							<div class="card-body">
-								<p class="card-text">做replay一定不能错过的优质网站</p>
-							</div>
-						</a>
-					</div>
-				</div>
-				<div class="col-12 col-lg-4 col-md-6 mb-3">
-					<div class="card mb-3 h-100" style="background-color: #479F76;">
-						<a class="btn p-0 h-100 text-light" href="http://www.zzhai.top/trpg/log_merge">
-							<div class="card-header">🔖️️ 跑团Logs合并整理</div>
-							<div class="card-body">
-								<p class="card-text">将多个群聊消息按照时间线进行合并整理</p>
-							</div>
-						</a>
-					</div>
-				</div>
-				<div class="col-12 col-lg-4 col-md-6 mb-3">
-					<div class="card mb-3 h-100" style="background-color: #FFDA6A;">
-						<a class="btn p-0 h-100 text-dark" href="http://www.zzhai.top/trpg/map">
-							<div class="card-header">🗺️ 在线地图</div>
-							<div class="card-body">
-								<p class="card-text">适用于DND战棋类跑团</p>
-							</div>
-						</a>
-					</div>
-				</div>
-				<h3>🖼️ 图片工具箱</h3>
-				<div class="col-12 col-lg-4 col-md-6 mb-3">
-					<div class="card mb-3 h-100" style="background-color: #FFC107;">
-						<a class="btn p-0 h-100 text-dark" href="./meme/">
-							<div class="card-header">😀 表情包工具箱</div>
-							<div class="card-body">
-								<p class="card-text">用图像和文字制作动态表情包</p>
-							</div>
-						</a>
-					</div>
-				</div>
-				<div class="col-12 col-lg-4 col-md-6 mb-3">
-					<div class="card mb-3 h-100" style="background-color: #9EC5FE;">
-						<a class="btn p-0 h-100 text-dark" href="http://www.zzhai.top/pic/compression">
-							<div class="card-header">🖼 图片批量压缩工具</div>
-							<div class="card-body">
-								<p class="card-text">纯静态将图片根据设置尺寸和画质进行压缩</p>
-							</div>
-						</a>
-					</div>
-				</div>
-				<div class="col-12 col-lg-4 col-md-6 mb-3">
-					<div class="card mb-3 h-100" style="background-color: #aa55ff;">
-						<a class="btn p-0 h-100 text-light" href="./random-color-scheme/">
-							<div class="card-header">🎨 随机配色工具</div>
-							<div class="card-body">
-								<p class="card-text">根据所选择的颜色生成其他颜色进行搭配</p>
-							</div>
-						</a>
-					</div>
-				</div>
-			</div>
-		</div>
+			</details>
+
+			<nav class="chips" id="chips" aria-label="分类导航"></nav>
+
+			<div id="sections"></div>
+
+			<p class="empty" id="empty">没有找到相关工具，换个关键词试试～</p>
+
+		</main>
+
+		<footer class="footer">
+			宅爷的工具箱 · 纯静态页面，无任何第三方依赖
+		</footer>
+
+		<script src="assets/js/tools.js"></script>
+		<script src="assets/js/home.js"></script>
 	</body>
 </html>
