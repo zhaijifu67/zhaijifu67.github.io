@@ -27,7 +27,7 @@ window.TOOLS = [{
 				accent: '#F0A868'
 			},
 			{
-				icon: '⚔️',
+				icon: { type: 'image', src: 'https://prd-game-a-granbluefantasy.akamaized.net/assets/img/sp/assets/leader/s/100580_sw_1_01.jpg', alt: '说明' },
 				title: 'GBF 工具箱',
 				desc: '纯静态自定义战斗流',
 				href: './gbf/',
