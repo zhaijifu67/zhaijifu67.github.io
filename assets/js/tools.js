@@ -75,10 +75,10 @@ window.TOOLS = [{
 				/* 图片图标示例：取消下面注释并替换 src 即可
 				icon: { type: 'image', src: './assets/img/compression.png', alt: '图片压缩' },
 				*/
-				icon: '🗜️',
-				title: '图片批量压缩',
-				desc: '纯静态按尺寸和画质压缩图片',
-				href: 'http://www.zzhai.top/pic/compression',
+				icon: '🖼️',
+				title: '图片裁剪压缩工具',
+				desc: '批量裁剪、缩放并压缩图片',
+				href: './tools/image-cropping/',
 				accent: '#3B82F6'
 			},
 			{

@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>图片裁剪压缩工具 - 宅爷的工具箱</title>
+
+		<link rel="icon" href="https://zhaijifu67.github.io/favicon.ico">
+		<!-- ../../ 替换为 ../ 或 ../../ -->
+		<link rel="stylesheet" href="../../assets/css/base.css">
+		<script src="../../assets/js/theme.js"></script>
+
+		<style>
+			/* ---------- 基础兜底（建议合并入主样式） ---------- */
+			/* 部分主样式会给 .group 设置 display，会覆盖 hidden 属性 */
+			[hidden] {
+				display: none !important;
+			}
+
+			/* ---------- 上传区（横向紧凑条） ---------- */
+			.dropzone {
+				display: flex;
+				align-items: center;
+				gap: 16px;
+				padding: 20px 22px;
+				border: 2px dashed rgba(127, 127, 127, .35);
+				border-radius: 14px;
+				background: rgba(127, 127, 127, .04);
+				cursor: pointer;
+				transition: border-color .18s, background .18s;
+			}
+
+			.dropzone:hover {
+				border-color: rgba(127, 127, 127, .6);
+			}
+
+			.dropzone.dragover {
+				border-color: var(--brand, #3b82f6);
+				background: rgba(59, 130, 246, .1);
+			}
+
+			.dz-icon {
+				font-size: 34px;
+				line-height: 1;
+				flex: none;
+			}
+
+			.dz-body {
+				flex: 1;
+				min-width: 0;
+			}
+
+			.dz-title {
+				margin: 0 0 3px;
+				font-weight: 600;
+			}
+
+			.dz-hint {
+				margin: 0;
+				font-size: 12.5px;
+				opacity: .65;
+			}
+
+			.dropzone .btn {
+				flex: none;
+			}
+
+			/* ---------- 表单基础元素 ---------- */
+			.settings {
+				display: grid;
+				gap: 18px;
+			}
+
+			.grid-2 {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+				gap: 16px;
+			}
+
+			.field {
+				display: flex;
+				flex-direction: column;
+				gap: 7px;
+				min-width: 0;
+			}
+
+			.field-label {
+				font-size: 13px;
+				font-weight: 600;
+				opacity: .72;
+			}
+
+			.hint {
+				margin: 0;
+				font-size: 12px;
+				opacity: .55;
+			}
+
+			.num-input,
+			select.num-input {
+				width: 100%;
+				padding: 8px 10px;
+				border-radius: 9px;
+				border: 1px solid rgba(127, 127, 127, .3);
+				background: rgba(127, 127, 127, .05);
+				color: inherit;
+				font: inherit;
+				font-size: 14px;
+				box-sizing: border-box;
+			}
+
+			.num-input:focus-visible {
+				outline: 2px solid var(--brand, #3b82f6);
+				outline-offset: 1px;
+				border-color: transparent;
+			}
+
+			input[type="range"] {
+				width: 100%;
+				accent-color: var(--brand, #3b82f6);
+				cursor: pointer;
+			}
+
+			input[type="color"] {
+				width: 46px;
+				height: 34px;
+				padding: 2px;
+				border-radius: 8px;
+				border: 1px solid rgba(127, 127, 127, .3);
+				background: transparent;
+				cursor: pointer;
+				flex: none;
+			}
+
+			.color-row {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+				flex-wrap: wrap;
+			}
+
+			.check {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				font-size: 13px;
+				cursor: pointer;
+				opacity: .85;
+			}
+
+			.check input {
+				accent-color: var(--brand, #3b82f6);
+				cursor: pointer;
+			}
+
+			.check-lg {
+				font-size: 14px;
+				font-weight: 600;
+				padding: 10px 12px;
+				border-radius: 10px;
+				background: rgba(127, 127, 127, .06);
+				border: 1px dashed rgba(127, 127, 127, .28);
+				width: 100%;
+				box-sizing: border-box;
+				opacity: 1;
+			}
+
+			.check-lg input {
+				width: 16px;
+				height: 16px;
+			}
+
+			.is-disabled {
+				opacity: .45;
+			}
+
+			.is-disabled * {
+				pointer-events: none;
+			}
+
+			output {
+				font-variant-numeric: tabular-nums;
+				opacity: .85;
+			}
+
+			/* ---------- 尺寸芯片 ---------- */
+			.chips {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 8px;
+			}
+
+			.chip {
+				padding: 6px 12px;
+				border-radius: 999px;
+				border: 1px solid rgba(127, 127, 127, .28);
+				background: transparent;
+				color: inherit;
+				font: inherit;
+				font-size: 13px;
+				cursor: pointer;
+				transition: background .15s, border-color .15s;
+				white-space: nowrap;
+			}
+
+			.chip:hover {
+				background: rgba(127, 127, 127, .14);
+			}
+
+			.chip.active {
+				background: var(--brand, #3b82f6);
+				border-color: transparent;
+				color: #fff;
+			}
+
+			/* ---------- 按钮（保留工具内必需的最小集） ---------- */
+			.btn {
+				padding: 9px 16px;
+				border-radius: 10px;
+				border: 1px solid rgba(127, 127, 127, .3);
+				background: transparent;
+				color: inherit;
+				font: inherit;
+				font-size: 14px;
+				cursor: pointer;
+				transition: background .15s, filter .15s;
+			}
+
+			.btn:hover:not(:disabled) {
+				background: rgba(127, 127, 127, .12);
+			}
+
+			.btn-primary {
+				background: var(--brand, #3b82f6);
+				border-color: transparent;
+				color: #fff;
+			}
+
+			.btn-primary:hover:not(:disabled) {
+				background: var(--brand, #3b82f6);
+				filter: brightness(1.08);
+			}
+
+			.btn:disabled {
+				opacity: .45;
+				cursor: not-allowed;
+			}
+
+			/* ---------- 结果区 ---------- */
+			.toolbar {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 12px;
+				flex-wrap: wrap;
+				margin-bottom: 14px;
+			}
+
+			.toolbar-actions {
+				display: flex;
+				gap: 10px;
+			}
+
+			.summary {
+				font-size: 13px;
+				opacity: .7;
+				margin-left: 8px;
+			}
+
+			.results {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+				gap: 12px;
+			}
+
+			.card {
+				display: flex;
+				gap: 12px;
+				align-items: flex-start;
+				padding: 10px;
+				border-radius: 12px;
+				border: 1px solid rgba(127, 127, 127, .2);
+				background: rgba(127, 127, 127, .05);
+				position: relative;
+				min-width: 0;
+			}
+
+			.card.is-error {
+				border-color: rgba(239, 68, 68, .55);
+			}
+
+			.card .thumb {
+				width: 68px;
+				height: 68px;
+				border-radius: 8px;
+				object-fit: cover;
+				flex: none;
+				background: rgba(127, 127, 127, .15);
+				display: block;
+				cursor: zoom-in;
+				transition: opacity .15s;
+			}
+
+			.card .thumb:hover {
+				opacity: .8;
+			}
+
+			.card .meta {
+				min-width: 0;
+				flex: 1;
+				display: flex;
+				flex-direction: column;
+				gap: 3px;
+				font-size: 12px;
+				line-height: 1.45;
+			}
+
+			.card .fname {
+				font-size: 13px;
+				font-weight: 600;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+				padding-right: 20px;
+			}
+
+			.card .dims,
+			.card .sizes {
+				opacity: .7;
+				font-variant-numeric: tabular-nums;
+			}
+
+			.card .stat {
+				font-size: 12px;
+				font-weight: 600;
+				opacity: .9;
+			}
+
+			.card .stat.good {
+				color: #16a34a;
+			}
+
+			.card .stat.bad {
+				color: #dc2626;
+			}
+
+			.card .card-remove {
+				position: absolute;
+				top: 8px;
+				right: 8px;
+				width: 22px;
+				height: 22px;
+				border-radius: 50%;
+				border: none;
+				cursor: pointer;
+				background: rgba(127, 127, 127, .18);
+				color: inherit;
+				font-size: 11px;
+				line-height: 1;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				opacity: .55;
+				transition: background .15s, opacity .15s;
+			}
+
+			.card .card-remove:hover {
+				opacity: 1;
+				background: rgba(239, 68, 68, .85);
+				color: #fff;
+			}
+
+			/* ---------- 图片放大预览对话框 ---------- */
+			.preview-dialog {
+				border: none;
+				padding: 0;
+				background: transparent;
+				max-width: 94vw;
+				max-height: 94vh;
+				width: auto;
+				height: auto;
+				overflow: visible;
+			}
+
+			.preview-dialog::backdrop {
+				background: rgba(0, 0, 0, .82);
+				backdrop-filter: blur(2px);
+			}
+
+			.preview-dialog img {
+				display: block;
+				max-width: 94vw;
+				max-height: 94vh;
+				width: auto;
+				height: auto;
+				border-radius: 8px;
+				box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+				cursor: zoom-out;
+			}
+
+			.preview-dialog .preview-close {
+				position: fixed;
+				top: 16px;
+				right: 20px;
+				width: 40px;
+				height: 40px;
+				border-radius: 50%;
+				border: none;
+				background: rgba(0, 0, 0, .5);
+				color: #fff;
+				font-size: 20px;
+				line-height: 1;
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				transition: background .15s;
+				z-index: 1;
+			}
+
+			.preview-dialog .preview-close:hover {
+				background: rgba(0, 0, 0, .8);
+			}
+
+			@media (max-width: 560px) {
+				.dropzone {
+					flex-direction: column;
+					text-align: center;
+					gap: 12px;
+					padding: 22px 16px;
+				}
+			}
+
+			@media (max-width: 520px) {
+				.results {
+					grid-template-columns: 1fr;
+				}
+
+				.preview-dialog .preview-close {
+					top: 10px;
+					right: 12px;
+					width: 34px;
+					height: 34px;
+					font-size: 17px;
+				}
+			}
+		</style>
+	</head>
+	<body>
+
+		<!-- 顶栏自动注入，必须放在 body 最前面 -->
+		<script src="../../assets/js/header.js"></script>
+
+		<main class="wrap">
+			<header class="page-hero">
+				<span class="page-hero-icon" aria-hidden="true">✂️</span>
+				<div>
+					<h1>图片裁剪压缩工具</h1>
+					<p>批量裁剪、缩放并压缩图片，全程在浏览器本地完成，不会上传到任何服务器</p>
+					<div class="page-hero-tags">
+						<span class="page-hero-tag">纯前端</span>
+						<span class="page-hero-tag">批量处理</span>
+					</div>
+				</div>
+			</header>
+
+			<!-- 上传区 -->
+			<section class="group">
+				<h2 class="group-title">🖼️ 上传图片</h2>
+				<div class="dropzone" id="dropzone">
+					<div class="dz-icon">🖼️</div>
+					<div class="dz-body">
+						<p class="dz-title">拖拽图片到这里，或点击选择文件</p>
+						<p class="dz-hint">支持 JPG / PNG / WebP / GIF，可一次选择多张</p>
+					</div>
+					<button type="button" class="btn btn-primary" id="pickBtn">选择图片</button>
+					<input type="file" id="fileInput" accept="image/*" multiple hidden>
+				</div>
+			</section>
+
+			<!-- 结果区（紧跟上传区，整行展示） -->
+			<section class="group" id="resultPanel" hidden>
+				<h2 class="group-title">📦 处理结果</h2>
+				<div class="panel">
+					<div class="toolbar">
+						<div>
+							<strong id="countLabel"></strong>
+							<span class="summary" id="summary"></span>
+						</div>
+						<div class="toolbar-actions">
+							<button type="button" class="btn" id="clearBtn">清空</button>
+							<button type="button" class="btn btn-primary" id="saveAllBtn" disabled>批量保存</button>
+						</div>
+					</div>
+					<div class="results" id="results"></div>
+				</div>
+			</section>
+
+			<!-- 设置区 -->
+			<section class="group">
+				<h2 class="group-title">⚙️ 尺寸与压缩设置</h2>
+				<div class="panel">
+					<div class="settings">
+
+						<div class="field">
+							<label class="check check-lg">
+								<input type="checkbox" id="keepOriginal" checked>
+								<span>保留原始尺寸（只压缩 / 转格式，不裁剪）</span>
+							</label>
+						</div>
+
+						<div class="field" id="sizeField">
+							<span class="field-label">常用尺寸</span>
+							<div class="chips" id="presetChips"></div>
+						</div>
+
+						<div class="grid-2" id="sizeInputs">
+							<label class="field">
+								<span class="field-label">目标宽度（px）</span>
+								<input type="number" id="targetW" class="num-input" min="1" max="12000" step="1"
+									value="1920">
+							</label>
+							<label class="field">
+								<span class="field-label">目标高度（px）</span>
+								<input type="number" id="targetH" class="num-input" min="1" max="12000" step="1"
+									value="1080">
+							</label>
+						</div>
+
+						<div class="grid-2">
+							<label class="field" id="fitField">
+								<span class="field-label">裁剪方式</span>
+								<select id="fitMode" class="num-input">
+									<option value="cover">裁剪填充（等比缩放后居中裁剪）</option>
+									<option value="contain">完整显示（等比缩放，四周留白）</option>
+									<option value="stretch">拉伸铺满（不保持比例）</option>
+								</select>
+							</label>
+							<label class="field">
+								<span class="field-label">目标格式</span>
+								<select id="format" class="num-input">
+									<option value="auto">保持原格式</option>
+									<option value="image/png">PNG（.png）</option>
+									<option value="image/jpeg">JPEG（.jpg）</option>
+									<option value="image/webp">WebP（.webp）</option>
+								</select>
+							</label>
+						</div>
+
+						<div class="field">
+							<span class="field-label">压缩质量 <output id="qualityVal">85%</output></span>
+							<input type="range" id="quality" min="0.1" max="1" step="0.05" value="0.85">
+							<p class="hint">质量越低，生成的文件越小（JPEG / WebP 有效；PNG 为无损格式，此设置不生效）</p>
+						</div>
+
+						<div class="field">
+							<span class="field-label">留白背景</span>
+							<div class="color-row">
+								<input type="color" id="bgColor" value="#ffffff">
+								<label class="check">
+									<input type="checkbox" id="transparentBg" checked>
+									<span>使用透明背景（PNG / WebP）</span>
+								</label>
+							</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- 图片放大预览对话框（全页共用一个） -->
+			<dialog class="preview-dialog" id="previewDialog">
+				<button type="button" class="preview-close" id="previewClose" aria-label="关闭预览">✕</button>
+				<img id="previewImg" alt="预览大图">
+			</dialog>
+
+		</main>
+
+		<script>
+			/* ============ 页面专属 JS ============ */
+			(function() {
+				'use strict';
+
+				/* ---------- 预设尺寸 ---------- */
+				const PRESETS = [{
+						label: '头像 200×200',
+						w: 200,
+						h: 200
+					},
+					{
+						label: '头像 400×400',
+						w: 400,
+						h: 400
+					},
+					{
+						label: '图标 512×512',
+						w: 512,
+						h: 512
+					},
+					{
+						label: '商品方图 800×800',
+						w: 800,
+						h: 800
+					},
+					{
+						label: '朋友圈 1080×1080',
+						w: 1080,
+						h: 1080
+					},
+					{
+						label: '公众号封面 900×383',
+						w: 900,
+						h: 383
+					},
+					{
+						label: '公众号首图 900×500',
+						w: 900,
+						h: 500
+					},
+					{
+						label: '视频缩略图 320×180',
+						w: 320,
+						h: 180
+					},
+					{
+						label: '720P 1280×720',
+						w: 1280,
+						h: 720
+					},
+					{
+						label: '1080P 1920×1080',
+						w: 1920,
+						h: 1080
+					},
+					{
+						label: '手机壁纸 1080×1920',
+						w: 1080,
+						h: 1920
+					},
+					{
+						label: '证件照 295×413',
+						w: 295,
+						h: 413
+					}
+				];
+
+				const EXT = {
+					'image/jpeg': 'jpg',
+					'image/png': 'png',
+					'image/webp': 'webp'
+				};
+
+				/* ---------- DOM ---------- */
+				const $ = (sel, root = document) => root.querySelector(sel);
+				const els = {
+					dropzone: $('#dropzone'),
+					fileInput: $('#fileInput'),
+					pickBtn: $('#pickBtn'),
+					keepOriginal: $('#keepOriginal'),
+					presetChips: $('#presetChips'),
+					sizeInputs: $('#sizeInputs'),
+					fitField: $('#fitField'),
+					w: $('#targetW'),
+					h: $('#targetH'),
+					fitMode: $('#fitMode'),
+					quality: $('#quality'),
+					qualityVal: $('#qualityVal'),
+					format: $('#format'),
+					bgColor: $('#bgColor'),
+					transparentBg: $('#transparentBg'),
+					resultPanel: $('#resultPanel'),
+					results: $('#results'),
+					countLabel: $('#countLabel'),
+					summary: $('#summary'),
+					saveAllBtn: $('#saveAllBtn'),
+					clearBtn: $('#clearBtn'),
+					previewDialog: $('#previewDialog'),
+					previewImg: $('#previewImg'),
+					previewClose: $('#previewClose')
+				};
+
+				/* ---------- 状态 ---------- */
+				const state = {
+					items: [],
+					token: 0
+				};
+				let debounceTimer = 0;
+				let uidSeq = 0;
+
+				/* ---------- 工具函数 ---------- */
+				const uid = () => 'img' + (++uidSeq);
+
+				function clampInt(v, min, max, def) {
+					const n = parseInt(v, 10);
+					if (!Number.isFinite(n)) return def;
+					return Math.min(max, Math.max(min, n));
+				}
+
+				function fmtSize(bytes) {
+					if (bytes === null || bytes === undefined) return '—';
+					if (bytes < 1024) return bytes + ' B';
+					if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+					return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+				}
+
+				const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+				/* ---------- 读取设置 ---------- */
+				function readOptions() {
+					return {
+						keepOriginal: els.keepOriginal.checked,
+						w: clampInt(els.w.value, 1, 12000, 1920),
+						h: clampInt(els.h.value, 1, 12000, 1080),
+						mode: els.fitMode.value,
+						quality: parseFloat(els.quality.value) || 0.85,
+						format: els.format.value,
+						bg: els.bgColor.value || '#ffffff',
+						transparent: els.transparentBg.checked
+					};
+				}
+
+				function resolveMime(srcType, fmt) {
+					if (fmt !== 'auto') return fmt;
+					if (srcType === 'image/png' || srcType === 'image/webp') return srcType;
+					return 'image/jpeg';
+				}
+
+				/* ---------- 图片解码 ---------- */
+				async function loadSource(file) {
+					if (window.createImageBitmap) {
+						try {
+							return await createImageBitmap(file, {
+								imageOrientation: 'from-image'
+							});
+						} catch (e) {
+							/* 回退到 <img> */
+						}
+					}
+					return new Promise((resolve, reject) => {
+						const url = URL.createObjectURL(file);
+						const img = new Image();
+						img.onload = () => {
+							URL.revokeObjectURL(url);
+							resolve(img);
+						};
+						img.onerror = () => {
+							URL.revokeObjectURL(url);
+							reject(new Error('无法解析该图片'));
+						};
+						img.src = url;
+					});
+				}
+
+				/* ---------- 绘制到画布 ---------- */
+				function drawToCanvas(source, opt, mime) {
+					const sw = source.width || source.naturalWidth;
+					const sh = source.height || source.naturalHeight;
+					const tw = opt.w,
+						th = opt.h;
+
+					const canvas = document.createElement('canvas');
+					canvas.width = tw;
+					canvas.height = th;
+					const ctx = canvas.getContext('2d');
+					ctx.imageSmoothingEnabled = true;
+					ctx.imageSmoothingQuality = 'high';
+
+					const keepAlpha = opt.transparent && (mime === 'image/png' || mime === 'image/webp');
+					if (!keepAlpha) {
+						ctx.fillStyle = opt.bg;
+						ctx.fillRect(0, 0, tw, th);
+					}
+
+					if (opt.mode === 'stretch') {
+						ctx.drawImage(source, 0, 0, tw, th);
+						return canvas;
+					}
+
+					const scale = opt.mode === 'cover' ?
+						Math.max(tw / sw, th / sh) :
+						Math.min(tw / sw, th / sh);
+					const dw = sw * scale;
+					const dh = sh * scale;
+					ctx.drawImage(source, (tw - dw) / 2, (th - dh) / 2, dw, dh);
+					return canvas;
+				}
+
+				function canvasToBlob(canvas, mime, quality) {
+					return new Promise((resolve, reject) => {
+						canvas.toBlob(
+							blob => blob ? resolve(blob) : reject(new Error('导出失败')),
+							mime,
+							quality
+						);
+					});
+				}
+
+				/* ---------- 批量处理 ---------- */
+				function scheduleReprocess() {
+					clearTimeout(debounceTimer);
+					debounceTimer = setTimeout(reprocessAll, 300);
+				}
+
+				async function reprocessAll() {
+					if (!state.items.length) return;
+					const myToken = ++state.token;
+					const opt = readOptions();
+
+					for (const it of state.items) {
+						if (it.outUrl) {
+							URL.revokeObjectURL(it.outUrl);
+							it.outUrl = null;
+						}
+						it.outBlob = null;
+						it.outMime = null;
+						it.error = null;
+						it.pending = true;
+						it.outW = opt.keepOriginal ? (it.srcW || 0) : opt.w;
+						it.outH = opt.keepOriginal ? (it.srcH || 0) : opt.h;
+					}
+					renderCards();
+					updateToolbar();
+
+					const snapshot = state.items.slice();
+					for (const it of snapshot) {
+						if (myToken !== state.token) return;
+						if (!state.items.includes(it)) continue;
+
+						try {
+							if (!it.source) {
+								it.source = await loadSource(it.file);
+								it.srcW = it.source.width || it.source.naturalWidth;
+								it.srcH = it.source.height || it.source.naturalHeight;
+							}
+							if (myToken !== state.token) return;
+
+							const tw = opt.keepOriginal ? it.srcW : opt.w;
+							const th = opt.keepOriginal ? it.srcH : opt.h;
+							it.outW = tw;
+							it.outH = th;
+
+							const mime = resolveMime(it.file.type, opt.format);
+							const canvas = drawToCanvas(it.source, {
+								...opt,
+								w: tw,
+								h: th
+							}, mime);
+							const q = (mime === 'image/jpeg' || mime === 'image/webp') ? opt.quality : undefined;
+							const blob = await canvasToBlob(canvas, mime, q);
+							if (myToken !== state.token) return;
+
+							it.outBlob = blob;
+							it.outMime = mime;
+							it.outUrl = URL.createObjectURL(blob);
+							it.pending = false;
+						} catch (err) {
+							it.error = (err && err.message) || '处理失败';
+							it.pending = false;
+						}
+
+						renderCards();
+						updateToolbar();
+					}
+				}
+
+				/* ---------- 卡片渲染 ---------- */
+				function createCard(it) {
+					const card = document.createElement('div');
+					card.className = 'card';
+					card.dataset.id = it.id;
+					card.innerHTML =
+						'<img class="thumb" alt="">' +
+						'<div class="meta">' +
+						'  <div class="fname"></div>' +
+						'  <div class="dims"></div>' +
+						'  <div class="sizes"></div>' +
+						'  <div class="stat"></div>' +
+						'</div>' +
+						'<button type="button" class="card-remove" title="移除">✕</button>';
+					card.querySelector('.card-remove').addEventListener('click', () => removeItem(it.id));
+					// 点击缩略图放大预览
+					card.querySelector('.thumb').addEventListener('click', () => {
+						if (it.outUrl) openPreview(it.outUrl);
+					});
+					return card;
+				}
+
+				function updateCard(card, it) {
+					const thumb = card.querySelector('.thumb');
+					const nameEl = card.querySelector('.fname');
+					const dimsEl = card.querySelector('.dims');
+					const sizesEl = card.querySelector('.sizes');
+					const statEl = card.querySelector('.stat');
+
+					nameEl.textContent = it.file.name;
+					nameEl.title = it.file.name;
+
+					if (it.outUrl) {
+						if (thumb.getAttribute('src') !== it.outUrl) thumb.src = it.outUrl;
+						thumb.style.visibility = 'visible';
+					} else {
+						thumb.removeAttribute('src');
+						thumb.style.visibility = 'hidden';
+					}
+
+					card.classList.toggle('is-error', !!it.error);
+
+					let dimsText;
+					if (it.srcW) {
+						dimsText = it.srcW + '×' + it.srcH;
+						dimsText += it.outW ? ' → ' + it.outW + '×' + it.outH : ' → 处理中…';
+					} else {
+						dimsText = it.error ? '—' : '处理中…';
+					}
+					dimsEl.textContent = dimsText;
+
+					if (it.outBlob) {
+						const before = it.file.size;
+						const after = it.outBlob.size;
+						const ratio = before > 0 ? (1 - after / before) * 100 : 0;
+						sizesEl.textContent = fmtSize(before) + ' → ' + fmtSize(after);
+						statEl.textContent = (ratio >= 0 ? '↓ ' : '↑ ') + Math.abs(ratio).toFixed(0) + '%';
+						statEl.className = 'stat ' + (ratio >= 0 ? 'good' : 'bad');
+					} else if (it.error) {
+						sizesEl.textContent = fmtSize(it.file.size);
+						statEl.textContent = it.error;
+						statEl.className = 'stat bad';
+					} else {
+						sizesEl.textContent = fmtSize(it.file.size);
+						statEl.textContent = '处理中…';
+						statEl.className = 'stat';
+					}
+				}
+
+				function renderCards() {
+					const list = els.results;
+					for (const card of Array.from(list.children)) {
+						if (!state.items.some(it => it.id === card.dataset.id)) card.remove();
+					}
+					for (const it of state.items) {
+						let card = list.querySelector('.card[data-id="' + it.id + '"]');
+						if (!card) {
+							card = createCard(it);
+							list.appendChild(card);
+						}
+						updateCard(card, it);
+					}
+				}
+
+				function updateToolbar() {
+					const ready = state.items.filter(i => i.outBlob);
+					els.saveAllBtn.disabled = ready.length === 0;
+					els.saveAllBtn.textContent = ready.length ? '批量保存（' + ready.length + '）' : '批量保存';
+
+					let totalIn = 0,
+						totalOut = 0;
+					for (const it of state.items) {
+						totalIn += it.file.size;
+						if (it.outBlob) totalOut += it.outBlob.size;
+					}
+					els.countLabel.textContent = state.items.length ? '共 ' + state.items.length + ' 张' : '';
+					els.summary.textContent = ready.length ?
+						'已就绪 ' + ready.length + ' 张 · ' + fmtSize(totalIn) + ' → ' + fmtSize(totalOut) :
+						(state.items.length ? '处理中…' : '');
+				}
+
+				/* ---------- 增删 ---------- */
+				function addFiles(fileList) {
+					const files = Array.from(fileList).filter(f => f.type && f.type.indexOf('image/') === 0);
+					if (!files.length) return;
+
+					for (const f of files) {
+						state.items.push({
+							id: uid(),
+							file: f,
+							source: null,
+							srcW: 0,
+							srcH: 0,
+							outBlob: null,
+							outUrl: null,
+							outW: 0,
+							outH: 0,
+							outMime: null,
+							error: null,
+							pending: true
+						});
+					}
+					els.resultPanel.hidden = false;
+					reprocessAll();
+				}
+
+				function removeItem(id) {
+					const idx = state.items.findIndex(i => i.id === id);
+					if (idx < 0) return;
+					const it = state.items.splice(idx, 1)[0];
+					if (it.outUrl) URL.revokeObjectURL(it.outUrl);
+					if (it.source && typeof it.source.close === 'function') {
+						try {
+							it.source.close();
+						} catch (e) {
+							/* ignore */
+						}
+					}
+					const card = els.results.querySelector('.card[data-id="' + id + '"]');
+					if (card) card.remove();
+					if (!state.items.length) els.resultPanel.hidden = true;
+					updateToolbar();
+				}
+
+				function clearAll() {
+					state.token++;
+					for (const it of state.items) {
+						if (it.outUrl) URL.revokeObjectURL(it.outUrl);
+						if (it.source && typeof it.source.close === 'function') {
+							try {
+								it.source.close();
+							} catch (e) {
+								/* ignore */
+							}
+						}
+					}
+					state.items = [];
+					els.results.innerHTML = '';
+					els.resultPanel.hidden = true;
+					updateToolbar();
+				}
+
+				/* ---------- 图片放大预览 ---------- */
+				function openPreview(src) {
+					els.previewImg.src = src;
+					if (typeof els.previewDialog.showModal === 'function') {
+						els.previewDialog.showModal();
+					} else {
+						// 极旧浏览器回退（基本不会走到）
+						els.previewDialog.setAttribute('open', '');
+					}
+					// 锁定背景滚动
+					document.body.style.overflow = 'hidden';
+				}
+
+				function closePreview() {
+					els.previewDialog.close();
+					els.previewImg.src = '';
+					document.body.style.overflow = '';
+				}
+
+				/* ---------- 批量保存 ---------- */
+				async function saveAll() {
+					const ready = state.items.filter(i => i.outBlob && i.outUrl);
+					if (!ready.length) return;
+
+					els.saveAllBtn.disabled = true;
+					const used = new Set();
+
+					for (const it of ready) {
+						const ext = EXT[it.outMime] || 'jpg';
+						const base = it.file.name.replace(/\.[^.]+$/, '') || 'image';
+						let fname = base + '_' + it.outW + 'x' + it.outH + '.' + ext;
+						let n = 1;
+						while (used.has(fname)) {
+							fname = base + '_' + it.outW + 'x' + it.outH + '(' + (n++) + ').' + ext;
+						}
+						used.add(fname);
+
+						const a = document.createElement('a');
+						a.href = it.outUrl;
+						a.download = fname;
+						document.body.appendChild(a);
+						a.click();
+						a.remove();
+						await sleep(120);
+					}
+
+					els.saveAllBtn.disabled = false;
+				}
+
+				/* ---------- 预设尺寸 ---------- */
+				function markActivePreset() {
+					const w = parseInt(els.w.value, 10);
+					const h = parseInt(els.h.value, 10);
+					els.presetChips.querySelectorAll('.chip').forEach(c => {
+						c.classList.toggle('active', Number(c.dataset.w) === w && Number(c.dataset.h) === h);
+					});
+				}
+
+				function buildPresets() {
+					PRESETS.forEach(p => {
+						const b = document.createElement('button');
+						b.type = 'button';
+						b.className = 'chip';
+						b.textContent = p.label;
+						b.dataset.w = p.w;
+						b.dataset.h = p.h;
+						b.addEventListener('click', () => {
+							if (els.keepOriginal.checked) {
+								els.keepOriginal.checked = false;
+								syncKeepOriginalUI();
+							}
+							els.w.value = p.w;
+							els.h.value = p.h;
+							markActivePreset();
+							scheduleReprocess();
+						});
+						els.presetChips.appendChild(b);
+					});
+				}
+
+				/* ---------- 保留原始尺寸的 UI 联动 ---------- */
+				function syncKeepOriginalUI() {
+					const on = els.keepOriginal.checked;
+					els.sizeInputs.classList.toggle('is-disabled', on);
+					els.fitField.classList.toggle('is-disabled', on);
+					els.w.disabled = on;
+					els.h.disabled = on;
+					els.fitMode.disabled = on;
+
+					if (on) {
+						els.presetChips.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+					} else {
+						markActivePreset();
+					}
+				}
+
+				/* ---------- 事件绑定 ---------- */
+				function bindEvents() {
+					// 选择文件
+					els.dropzone.addEventListener('click', () => els.fileInput.click());
+					els.pickBtn.addEventListener('click', (e) => {
+						e.stopPropagation();
+						els.fileInput.click();
+					});
+					els.fileInput.addEventListener('change', (e) => {
+						addFiles(e.target.files);
+						e.target.value = '';
+					});
+
+					// 拖拽
+					['dragenter', 'dragover'].forEach(ev => {
+						els.dropzone.addEventListener(ev, (e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							els.dropzone.classList.add('dragover');
+						});
+					});
+					['dragleave', 'drop'].forEach(ev => {
+						els.dropzone.addEventListener(ev, (e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							els.dropzone.classList.remove('dragover');
+						});
+					});
+					els.dropzone.addEventListener('drop', (e) => {
+						if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+					});
+					window.addEventListener('dragover', (e) => e.preventDefault());
+					window.addEventListener('drop', (e) => e.preventDefault());
+
+					// 保留原始尺寸开关
+					els.keepOriginal.addEventListener('change', () => {
+						syncKeepOriginalUI();
+						scheduleReprocess();
+					});
+
+					// 设置项
+					[els.w, els.h].forEach(input => {
+						input.addEventListener('input', () => {
+							markActivePreset();
+							scheduleReprocess();
+						});
+					});
+					els.fitMode.addEventListener('change', scheduleReprocess);
+					els.format.addEventListener('change', () => {
+						els.quality.disabled = els.format.value === 'image/png';
+						scheduleReprocess();
+					});
+					els.bgColor.addEventListener('input', scheduleReprocess);
+					els.transparentBg.addEventListener('change', scheduleReprocess);
+					els.quality.addEventListener('input', () => {
+						els.qualityVal.textContent = Math.round(parseFloat(els.quality.value) * 100) + '%';
+						scheduleReprocess();
+					});
+
+					// 操作按钮
+					els.saveAllBtn.addEventListener('click', saveAll);
+					els.clearBtn.addEventListener('click', clearAll);
+
+					// ---------- 预览对话框事件 ----------
+					els.previewClose.addEventListener('click', closePreview);
+					// 点击图片本身也关闭
+					els.previewImg.addEventListener('click', closePreview);
+					// 点击 backdrop 关闭（dialog 的点击事件目标为 dialog 自身时表示点击了背景）
+					els.previewDialog.addEventListener('click', (e) => {
+						if (e.target === els.previewDialog) closePreview();
+					});
+					// 监听 dialog 的 close 事件，确保 body 滚动状态恢复
+					els.previewDialog.addEventListener('close', () => {
+						els.previewImg.src = '';
+						document.body.style.overflow = '';
+					});
+				}
+
+				/* ---------- 初始化 ---------- */
+				function init() {
+					buildPresets();
+					markActivePreset();
+					syncKeepOriginalUI();
+					els.qualityVal.textContent = Math.round(parseFloat(els.quality.value) * 100) + '%';
+					bindEvents();
+					updateToolbar();
+				}
+
+				init();
+			})();
+		</script>
+	</body>
+</html>
