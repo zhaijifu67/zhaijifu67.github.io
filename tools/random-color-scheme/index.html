@@ -229,9 +229,6 @@
 				color: var(--gbf-subtle);
 			}
 
-			/* ============================================================
-       色卡网格 + 三种展示方式
-       ============================================================ */
 			.color-grid {
 				display: grid;
 				gap: 12px;
@@ -257,7 +254,6 @@
 				box-shadow: var(--gbf-shadow-2);
 			}
 
-			/* ---------- 通用色块 ---------- */
 			.color-swatch {
 				display: flex;
 				align-items: center;
@@ -269,7 +265,6 @@
 				overflow: visible;
 			}
 
-			/* ---------- 气泡 tooltip ---------- */
 			.color-swatch::after {
 				content: attr(data-hex);
 				position: absolute;
@@ -295,23 +290,17 @@
 				opacity: 1;
 				transform: translate(-50%, -50%) scale(1);
 			}
-			.color-swatch.copied::after {
-				content: "✓ 已复制";
-			}
+			.color-swatch.copied::after { content: "✓ 已复制"; }
 
-			/* 主色高亮：白色内嵌描边 */
 			.color-swatch.is-main {
 				box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .65);
 			}
 
-			/* ---------- 横向（默认） ---------- */
 			.color-grid[data-mode="horizontal"] .color-card {
 				flex-direction: row;
 				height: 60px;
 			}
-			.color-grid[data-mode="horizontal"] .color-swatch {
-				flex: 1;
-			}
+			.color-grid[data-mode="horizontal"] .color-swatch { flex: 1; }
 			.color-grid[data-mode="horizontal"] .color-swatch + .color-swatch {
 				box-shadow: inset 1px 0 0 rgba(0, 0, 0, .06);
 			}
@@ -319,7 +308,6 @@
 				box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .65);
 			}
 
-			/* ---------- 圆形 ---------- */
 			.color-grid[data-mode="circle"] .color-card {
 				display: flex;
 				align-items: center;
@@ -344,7 +332,6 @@
 					0 2px 8px rgba(0, 0, 0, .15),
 					inset 0 0 0 2px rgba(255, 255, 255, .7);
 			}
-			/* 数量多（≥5）：叠压；数量少（<5）：留间隙 */
 			.color-grid[data-mode="circle"] .color-card.overlap .color-swatch + .color-swatch {
 				margin-left: -12px;
 			}
@@ -352,7 +339,6 @@
 				margin-left: 8px;
 			}
 
-			/* ---------- 横向渐变 ---------- */
 			.color-grid[data-mode="gradient"] .color-card {
 				height: 60px;
 				background: var(--gradient-bg, var(--gbf-surface));
@@ -362,7 +348,6 @@
 				background: transparent !important;
 			}
 
-			/* ---------- 关闭按钮 ---------- */
 			.color-card-close {
 				position: absolute;
 				top: 4px;
@@ -441,7 +426,7 @@
 						</div>
 					</div>
 
-					<p class="anchor-hint">💡 主色始终精确出现在色板中；悬停色块可查看色值。</p>
+					<p class="anchor-hint">💡 主色精确出现在色板中；低饱和主色会生成低饱和色板。</p>
 
 					<button class="btn btn-primary btn-block" onclick="random()">✨ 随机生成</button>
 
@@ -480,11 +465,10 @@
 
 		<script>
 			/* ============================================================
-   宅爷配色工具箱 —— JS v7
-   v6 基础上：
-   - 删除纵向；横向去主色 2 倍宽；气泡显示色值
-   - 圆形 flex:1 充满容器，≥5 色自动叠压，<5 色留间隙
-   - 新增横向渐变展示
+   宅爷配色工具箱 —— JS v8
+   v7 基础上：饱和度改为「以主色 S 为锚，随距离 t 平滑过渡」
+   低饱和主色 → 近处低饱和（协调），远处适度提升（层次）
+   高饱和主色 → 近处保持，远处略降（防刺眼）
    ============================================================ */
 
 			/* ---------- 1. 颜色转换 ---------- */
@@ -592,11 +576,24 @@
 				var rawS = baseHsl.s;
 				var rawL = baseHsl.l;
 
-				var baseH = rawH, baseS = rawS, baseL = rawL;
-				if (baseS < 5) { baseH = 217; baseS = 60; }
-				else if (baseS < 18) { baseS = 60; }
-				baseL = Math.max(8, Math.min(92, baseL));
+				/* 计算基准：移除"低饱和强制拉高到 60"的旧兜底 */
+				var baseH = rawH;
+				var baseL = Math.max(8, Math.min(92, rawL));
 
+				/* ---------- 3.1 远处目标饱和度（核心改动） ---------- */
+				var sFar;
+				if (rawS < 15) {
+					/* 极低饱和：几乎无彩色，色板保持灰调 */
+					sFar = rawS * 0.7;
+				} else if (rawS < 55) {
+					/* 低-中饱和：远处温和提升，形成层次 */
+					sFar = Math.min(rawS + (55 - rawS) * 0.35, 55);
+				} else {
+					/* 高饱和：远处略降，避免暗/亮端过艳 */
+					sFar = Math.max(rawS * 0.75, 42);
+				}
+
+				/* ---------- 3.2 色相 ---------- */
 				var hueJitter = (opts.hueJitter || 0) * floatAmt;
 				var hues;
 				if (scheme.buildHues) {
@@ -613,6 +610,7 @@
 					});
 				}
 
+				/* ---------- 3.3 锚点位置 ---------- */
 				var baseAnchor;
 				if (baseL < 35) baseAnchor = n - 1;
 				else if (baseL > 65) baseAnchor = 0;
@@ -628,6 +626,7 @@
 				var upCount   = anchorIdx;
 				var downCount = n - 1 - anchorIdx;
 
+				/* ---------- 3.4 明度跨度 ---------- */
 				var TOP_MAX = 97, BOTTOM_MIN = 3;
 				var upRoom = TOP_MAX - baseL;
 				var downRoom = baseL - BOTTOM_MIN;
@@ -649,6 +648,7 @@
 				var upSpan   = Math.min(upTarget,   upRoom);
 				var downSpan = Math.min(downTarget, downRoom);
 
+				/* ---------- 3.5 步长 ---------- */
 				var MIN_STEP = 2.5;
 				function makeSteps(count, span) {
 					var steps = [];
@@ -673,6 +673,7 @@
 				var upSteps   = makeSteps(upCount,   upSpan);
 				var downSteps = makeSteps(downCount, downSpan);
 
+				/* ---------- 3.6 累计 L 序列 ---------- */
 				var Ls = new Array(n);
 				Ls[anchorIdx] = baseL;
 
@@ -687,20 +688,24 @@
 					Ls[anchorIdx + 1 + di] = Math.max(BOTTOM_MIN, l);
 				}
 
+				/* ---------- 3.7 生成结果 ---------- */
 				var maxDist = Math.max(baseL - BOTTOM_MIN, TOP_MAX - baseL);
 				var result = [];
 
 				for (var k = 0; k < n; k++) {
 					if (k === anchorIdx && mainRgb) {
+						/* 锚点：原始 RGB 精确嵌入 */
 						result.push({ l: rawL, rgb: { r: mainRgb.r, g: mainRgb.g, b: mainRgb.b } });
 						continue;
 					}
+
 					var h = ((Math.round(hues[k]) % 360) + 360) % 360;
 					var dist = Math.abs(Ls[k] - baseL);
 					var t = maxDist > 0 ? Math.min(1, dist / maxDist) : 0;
-					var sDecay = Ls[k] >= baseL ? 0.35 : 0.15;
-					var s = baseS * (1 - t * sDecay);
-					s = Math.max(3, Math.min(98, Math.round(s)));
+
+					/* 饱和度：从 rawS 向 sFar 线性过渡（t=0 锚点，t=1 最远） */
+					var s = rawS + (sFar - rawS) * t;
+					s = Math.max(0, Math.min(100, Math.round(s)));
 
 					result.push({ h: h, s: s, l: Math.round(Ls[k]) });
 				}
@@ -755,20 +760,17 @@
 				color_arr = color_arr || [];
 				var result = document.getElementById('result');
 
-				while (result.children.length >= 30) {
+				while (result.children.length >= 15) {
 					result.lastElementChild.remove();
 				}
 
 				var n = color_arr.length;
 				var card = document.createElement('div');
 				card.className = 'color-card';
-
-				/* 圆形模式：数量 ≥ 5 时叠压 */
 				if (n >= 5) card.classList.add('overlap');
 
 				var mainHex = document.getElementById('color_main').value.toUpperCase();
 
-				/* 渐变模式的背景 */
 				var stops = color_arr.map(function(c, i) {
 					var hex = rgbToHex(c.r, c.g, c.b);
 					var pct = n === 1 ? 0 : (i / (n - 1)) * 100;
