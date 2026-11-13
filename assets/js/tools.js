@@ -41,8 +41,8 @@ window.TOOLS = [{
 		items: [{
 				icon: '📑',
 				title: '跑团 Replay 实用导航',
-				desc: '做 replay 一定不能错过的优质网站',
-				href: 'http://www.zzhai.top/trpg/navigation',
+				desc: '实用工具集合，立绘、配音、地图等',
+				href: './tools/trpg-navigation/',
 				accent: '#FD7E14'
 			},
 			{
