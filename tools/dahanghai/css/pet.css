@@ -1,0 +1,61 @@
+.pet_F {
+	color: #55aaff !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+.pet_E {
+	color: #73e6ff !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+.pet_D {
+	color: #52ff46 !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+.pet_C {
+	color: #ffd900 !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+.pet_B {
+	color: #ff8000 !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+.pet_A {
+	color: #ff0000 !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+.pet_S {
+	color: #ffff00 !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+#petDataTable td:nth-child(12) a,
+#petDataTable td:nth-child(13) a {
+	color: #ffff00 !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+#petDataTable td:nth-child(-n+30):nth-child(n+14),
+#petDataTable th:nth-child(-n+30):nth-child(n+14) {
+	display: none;
+}

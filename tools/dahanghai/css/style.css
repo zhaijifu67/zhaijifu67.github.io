@@ -1,0 +1,90 @@
+#tipsClick {
+	position: fixed;
+	bottom: 5px;
+	right: 5px;
+	z-index: 10;
+	max-width: 60%;
+}
+
+.tipsClick::after {
+	content: "?";
+	display: inline-block;
+	background-color: #ff8000;
+	color: #ffff00;
+	font-weight: bolder;
+	font-size: 14px;
+	width: 1em;
+	height: 1em;
+	line-height: 1em;
+	border-radius: 1em;
+	text-align: center;
+	margin: 0 .5em;
+}
+
+#tipsClick a {
+	background-color: #64ddc7;
+	color: #ffffff;
+	padding: 0 .5em;
+	border-radius: .5em;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+	white-space: nowrap;
+}
+
+#tipsClick a:hover {
+	background-color: #ffaa00;
+}
+
+.sort::after {
+	background-color: var(--bs-tertiary-bg);
+	display: inline-block;
+	width: 1.5em;
+	height: 1.5em;
+	text-align: center;
+	border-radius: 50%;
+	right: 0;
+}
+
+.sort::after {
+	content: "↑↓";
+}
+
+.sortDown::after {
+	content: "↓";
+}
+
+.sortUp::after {
+	content: "↑";
+}
+
+.sortUp::after,
+.sortDown::after {
+	background-color: var(--red-color);
+}
+
+#tipsClick .close {
+	width: 24px;
+	height: 24px;
+	background-color: #64ddc7;
+	position: absolute;
+	right: -5px;
+	top: -5px;
+	border-radius: 15px;
+	text-align: center;
+	font-weight: bolder;
+}
+
+#tipsClick .close::after {
+	content: "x";
+	font-size: 24px;
+	line-height: 22px;
+	color: #ffffff;
+}
+
+#tipsClick .close:hover {
+	background-color: #ff8000;
+}
+
+#tipsClick strong a {
+	color: #ffff00;
+}

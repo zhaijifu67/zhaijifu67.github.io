@@ -1,0 +1,53 @@
+.job_F {
+	color: #55aaff !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+.job_E{
+	color: #73e6ff !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+.job_D{
+	color: #52ff46 !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+.job_C {
+	color: #ffd900 !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+.job_B {
+	color: #ff8000 !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+.job_A {
+	color: #ff0000 !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+.job_S {
+	color: #ffff00 !important;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+#jobDataTable td:nth-child(-n+20):nth-child(n+12),
+#jobDataTable th:nth-child(-n+20):nth-child(n+12) {
+	display: none;
+}

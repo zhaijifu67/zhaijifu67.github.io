@@ -1,0 +1,65 @@
+#eggDataTable td:nth-child(3),
+#incubateTable td:nth-child(3),
+#incubateTable td:nth-child(4),
+#eggIncubateTable td:nth-child(2),
+#countTable td:nth-child(2) {
+	color: #52ff46;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+#eggDataTable td:nth-child(4),
+#incubateTable td:nth-child(5),
+#incubateTable td:nth-child(6),
+#eggIncubateTable td:nth-child(3),
+#countTable td:nth-child(3) {
+	color: #ff7474;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+#eggDataTable td:nth-child(5),
+#incubateTable td:nth-child(7),
+#incubateTable td:nth-child(8),
+#eggIncubateTable td:nth-child(4),
+#countTable td:nth-child(4) {
+	color: #85d1ff;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+#eggDataTable td:nth-child(6),
+#incubateTable td:nth-child(9),
+#incubateTable td:nth-child(10),
+#eggIncubateTable td:nth-child(5),
+#countTable td:nth-child(5) {
+	color: #c98aff;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+#eggDataTable td:nth-child(7),
+#incubateTable td:nth-child(11),
+#incubateTable td:nth-child(12),
+#eggIncubateTable td:nth-child(6),
+#countTable td:nth-child(6) {
+	color: #ffff00;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
+
+#eggDataTable td:nth-child(8),
+#incubateTable td:nth-child(13),
+#incubateTable td:nth-child(14),
+#eggIncubateTable td:nth-child(7),
+#countTable td:nth-child(7) {
+	color: #c2c2c2;
+	font-weight: bolder;
+	text-shadow: 0 2px black, 2px 0 black, -2px 0 black, 0 -2px black,
+		1px 1px black, -1px 1px black, -1px -1px black, 1px -1px black;
+}
