@@ -13,7 +13,11 @@ window.TOOLS = [{
 		icon: '🎮',
 		title: '游戏工具箱',
 		items: [{
-				icon: '⛵️',
+				icon: {
+					type: 'image',
+					src: 'https://game.leiting.com/static/upload/game/kldhh_icon.png',
+					alt: '大航海冒险物语'
+				},
 				title: '大航海冒险工具箱',
 				desc: '开罗游戏《大航海冒险物语》在线工具',
 				href: './dahanghai/',
@@ -27,7 +31,11 @@ window.TOOLS = [{
 				accent: '#F0A868'
 			},
 			{
-				icon: { type: 'image', src: 'https://prd-game-a-granbluefantasy.akamaized.net/assets/img/sp/assets/leader/s/100580_sw_1_01.jpg', alt: '说明' },
+				icon: {
+					type: 'image',
+					src: 'https://prd-game-a-granbluefantasy.akamaized.net/assets/img/sp/assets/leader/s/100580_sw_1_01.jpg',
+					alt: 'GBF战斗流程'
+				},
 				title: 'GBF 工具箱',
 				desc: '纯静态自定义战斗流',
 				href: './gbf/',
@@ -56,7 +64,7 @@ window.TOOLS = [{
 				icon: '🗺️',
 				title: '在线地图',
 				desc: '适用于 DND 战棋类跑团',
-				href: 'http://www.zzhai.top/trpg/map',
+				href: './tools/trpg-map/',
 				accent: '#E0A800'
 			}
 		]

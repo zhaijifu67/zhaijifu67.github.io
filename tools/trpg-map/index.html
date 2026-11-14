@@ -1,0 +1,4268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>跑团地图 - 宅爷的工具箱</title>
+		<link rel="icon" href="https://zhaijifu67.github.io/favicon.ico">
+		<link rel="stylesheet" href="../../assets/css/base.css">
+		<script src="../../assets/js/theme.js"></script>
+		<style>
+			:root {
+				--lineColor: var(--border-strong, #cbd5e1);
+				--hex-bg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='52' viewBox='0 0 30 52'%3E%3Cg fill='none' stroke='%23000' stroke-width='1.2' stroke-linejoin='round'%3E%3Cpolygon points='15,0 30,8.66 30,26 15,34.66 0,26 0,8.66'/%3E%3Cpolygon points='0,26 15,34.66 15,52 0,60.66 -15,52 -15,34.66'/%3E%3Cpolygon points='30,26 45,34.66 45,52 30,60.66 15,52 15,34.66'/%3E%3C/g%3E%3C/svg%3E");
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			html,
+			body {
+				margin: 0;
+				padding: 0;
+				height: 100%;
+				overflow: hidden;
+			}
+
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+				background: var(--bg, #0e1016);
+				color: var(--text, #e9ebf2);
+				font-size: 14px;
+				line-height: 1.5;
+			}
+
+			body>header,
+			body>nav {
+				z-index: 100;
+			}
+
+			main.map-stage {
+				position: fixed;
+				inset: 0;
+				margin: 0;
+				padding: 0;
+				max-width: none;
+				z-index: 0;
+				overflow: hidden;
+			}
+
+			#map_main {
+				position: absolute;
+				inset: 0;
+				font-size: 40px;
+				overflow: hidden;
+			}
+
+			/* 所有层级都移除缓动，保证移动同步 */
+			#terrain_layer {
+				position: absolute;
+				left: 0;
+				top: 0;
+				width: 100%;
+				height: 100%;
+				z-index: 4;
+				pointer-events: none;
+			}
+
+			#terrain_layer.painting {
+				pointer-events: auto;
+				cursor: crosshair;
+			}
+
+			#terrain_svg {
+				position: absolute;
+				left: -5000px;
+				top: -5000px;
+				width: 10000px;
+				height: 10000px;
+				overflow: visible;
+				pointer-events: none;
+			}
+
+			#map_line {
+				position: absolute;
+				inset: 0;
+				background-image:
+					linear-gradient(90deg, var(--lineColor) 2%, transparent 2%, transparent 98%, var(--lineColor) 98%),
+					linear-gradient(var(--lineColor) 2%, transparent 2%, transparent 98%, var(--lineColor) 98%);
+				background-size: 1em 1em;
+				opacity: 0.4;
+				z-index: 10;
+				pointer-events: none;
+			}
+
+			#map_line_hexagon {
+				position: absolute;
+				inset: 0;
+				background-color: var(--lineColor);
+				-webkit-mask-image: var(--hex-bg);
+				mask-image: var(--hex-bg);
+				-webkit-mask-size: 1em 1.733em;
+				mask-size: 1em 1.733em;
+				-webkit-mask-repeat: repeat;
+				mask-repeat: repeat;
+				opacity: 0.4;
+				z-index: 10;
+				pointer-events: none;
+			}
+
+			#token_user,
+			#token_bg {
+				position: absolute;
+				inset: 0;
+			}
+
+			#token_user {
+				z-index: 15;
+				pointer-events: none;
+				/* 容器穿透，仅子元素接收 */
+			}
+
+			#token_user>div {
+				pointer-events: auto;
+				/* 角色可点击 */
+			}
+
+			#token_bg {
+				z-index: 5;
+				pointer-events: none;
+				/* 容器穿透 */
+			}
+
+			#token_bg>.map-elem {
+				pointer-events: none;
+				/* 默认不可点，避免误触 */
+			}
+
+			#token_bg>.map-elem.map-draggable {
+				pointer-events: auto;
+				/* 开关打开后才可拖拽 */
+				cursor: move;
+			}
+
+			#token_bg>.map-elem.map-dragging {
+				cursor: grabbing;
+				outline: 2px dashed var(--brand, #3b82f6);
+				outline-offset: 2px;
+				filter: brightness(1.08);
+			}
+
+			#token_user>div:hover {
+				opacity: .85;
+			}
+
+			#move_path_svg {
+				position: absolute;
+				inset: 0;
+				width: 100%;
+				height: 100%;
+				pointer-events: none;
+				z-index: 12;
+			}
+
+			#move_path_svg path {
+				fill: none;
+				stroke: var(--brand, #3b82f6);
+				stroke-width: 2;
+				stroke-dasharray: 8 6;
+				stroke-linecap: round;
+				animation: dashFlow .8s linear infinite;
+			}
+
+			@keyframes dashFlow {
+				to {
+					stroke-dashoffset: -14;
+				}
+			}
+
+			.token-ghost {
+				position: absolute;
+				pointer-events: none;
+				z-index: 14;
+				opacity: .3;
+				filter: grayscale(1);
+			}
+
+			.token-ghost img {
+				display: block;
+			}
+
+			.token-hp {
+				position: absolute;
+				bottom: 0;
+				left: 0;
+				width: 100%;
+				height: 20%;
+				min-height: 4px;
+				background: rgba(0, 0, 0, .5);
+				border-radius: 2px;
+				overflow: hidden;
+				box-shadow: inset 0 1px 2px rgba(0, 0, 0, .4);
+				transition: opacity .2s;
+			}
+
+			.token-hp-fill {
+				height: 100%;
+				width: 100%;
+				border-radius: 2px;
+				position: relative;
+				background: linear-gradient(180deg, #ff6b6b 0%, #e53935 40%, #b71c1c 100%);
+				box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35);
+				transition: width .25s ease;
+			}
+
+			.token-hp-fill::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				border-radius: inherit;
+				background: linear-gradient(180deg, rgba(255, 255, 255, .45) 0%, rgba(255, 255, 255, .05) 50%, rgba(0, 0, 0, .08) 100%);
+				pointer-events: none;
+			}
+
+			.token-hp.low .token-hp-fill {
+				animation: hpPulse 1s ease-in-out infinite;
+			}
+
+			@keyframes hpPulse {
+
+				0%,
+				100% {
+					opacity: 1;
+				}
+
+				50% {
+					opacity: .6;
+				}
+			}
+
+			.token-hp--hover {
+				opacity: 0;
+			}
+
+			.token_user-item:hover .token-hp--hover {
+				opacity: 1;
+			}
+
+			/* ============================================================ */
+			/* 工具面板                                                     */
+			/* ============================================================ */
+			.tool-panel {
+				position: fixed;
+				top: 50%;
+				right: 16px;
+				transform: translateY(-50%);
+				width: 320px;
+				max-height: min(720px, calc(100vh - 120px));
+				z-index: 40;
+				display: flex;
+				flex-direction: column;
+				background: var(--surface, #1a1d24);
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				border-radius: var(--radius, 14px);
+				box-shadow: var(--shadow-2, 0 16px 50px rgba(0, 0, 0, .55));
+				overflow: hidden;
+				transition: width .32s cubic-bezier(.4, 0, .2, 1), height .32s cubic-bezier(.4, 0, .2, 1),
+					border-radius .32s, transform .32s, top .32s, right .32s;
+				user-select: none;
+				-webkit-user-select: none;
+			}
+
+			.tool-panel.dragging {
+				transition: none;
+				cursor: grabbing;
+			}
+
+			.panel-head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 8px;
+				padding: 12px 14px;
+				border-bottom: 1px solid var(--border, rgba(255, 255, 255, .09));
+				flex: none;
+				cursor: grab;
+			}
+
+			.panel-head:active {
+				cursor: grabbing;
+			}
+
+			.panel-title {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				min-width: 0;
+			}
+
+			.panel-icon {
+				width: 32px;
+				height: 32px;
+				display: grid;
+				place-items: center;
+				border-radius: 9px;
+				background: var(--brand-soft, rgba(59, 130, 246, .15));
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				font-size: 16px;
+				flex: none;
+			}
+
+			.panel-title strong {
+				display: block;
+				font-size: 14px;
+				font-weight: 600;
+				line-height: 1.2;
+				color: var(--text, #e9ebf2);
+			}
+
+			.panel-title small {
+				display: block;
+				font-size: 11.5px;
+				color: var(--muted, #8c93a6);
+				line-height: 1.3;
+				margin-top: 1px;
+			}
+
+			.panel-toggle {
+				width: 30px;
+				height: 30px;
+				display: grid;
+				place-items: center;
+				border-radius: 8px;
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				background: var(--surface-2, rgba(255, 255, 255, .04));
+				color: var(--muted, #8c93a6);
+				cursor: pointer;
+				font-size: 15px;
+				transition: all .18s;
+				flex: none;
+			}
+
+			.panel-toggle:hover {
+				background: var(--icon-bg, rgba(255, 255, 255, .08));
+				color: var(--text, #e9ebf2);
+			}
+
+			.tool-panel.collapsed {
+				width: 46px;
+				height: 46px;
+				max-height: 46px;
+				border-radius: 50%;
+				top: auto;
+				bottom: 24px;
+				right: 16px;
+				transform: none;
+			}
+
+			.tool-panel.collapsed .panel-head,
+			.tool-panel.collapsed .panel-tabs,
+			.tool-panel.collapsed .panel-body {
+				display: none;
+			}
+
+			.tool-panel.collapsed .panel-fab {
+				display: grid;
+			}
+
+			.panel-fab {
+				display: none;
+				place-items: center;
+				width: 100%;
+				height: 100%;
+				border: none;
+				background: transparent;
+				color: var(--text, #e9ebf2);
+				font-size: 20px;
+				cursor: pointer;
+			}
+
+			.panel-tabs {
+				display: flex;
+				border-bottom: 1px solid var(--border, rgba(255, 255, 255, .09));
+				flex: none;
+				padding: 0 4px;
+			}
+
+			.tab-btn {
+				flex: 1;
+				padding: 9px 4px;
+				background: transparent;
+				border: none;
+				border-bottom: 2px solid transparent;
+				color: var(--muted, #8c93a6);
+				font-size: 12.5px;
+				font-family: inherit;
+				cursor: pointer;
+				transition: all .18s;
+			}
+
+			.tab-btn:hover {
+				color: var(--text, #e9ebf2);
+			}
+
+			.tab-btn.active {
+				color: var(--brand, #3b82f6);
+				border-bottom-color: var(--brand, #3b82f6);
+			}
+
+			.panel-body {
+				padding: 12px;
+				overflow-y: auto;
+				flex: 1 1 auto;
+				min-height: 0;
+				scrollbar-width: thin;
+				scrollbar-color: var(--border-strong, #d1d5db) transparent;
+			}
+
+			.panel-body::-webkit-scrollbar {
+				width: 6px;
+			}
+
+			.panel-body::-webkit-scrollbar-thumb {
+				background: var(--border-strong, #d1d5db);
+				border-radius: 3px;
+			}
+
+			.tab-pane {
+				display: none;
+			}
+
+			.tab-pane.active {
+				display: block;
+			}
+
+			.tp-section {
+				margin-bottom: 14px;
+			}
+
+			.tp-section:last-child {
+				margin-bottom: 0;
+			}
+
+			.tp-section h3 {
+				font-size: 11.5px;
+				font-weight: 600;
+				letter-spacing: .04em;
+				text-transform: uppercase;
+				color: var(--muted, #8c93a6);
+				margin: 0 0 8px;
+			}
+
+			.panel-actions {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 8px;
+				margin-bottom: 14px;
+			}
+
+			.action-btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 6px;
+				padding: 9px 10px;
+				border: 1px solid transparent;
+				border-radius: 9px;
+				font-size: 13px;
+				font-weight: 500;
+				cursor: pointer;
+				transition: filter .18s;
+				font-family: inherit;
+			}
+
+			.action-btn.full {
+				grid-column: 1 / -1;
+			}
+
+			.action-primary {
+				background: var(--brand, #3b82f6);
+				color: #fff;
+			}
+
+			.action-primary:hover {
+				filter: brightness(1.1);
+			}
+
+			.action-secondary {
+				background: var(--surface-2, rgba(255, 255, 255, .04));
+				color: var(--text, #e9ebf2);
+				border-color: var(--border, rgba(255, 255, 255, .09));
+			}
+
+			.action-secondary:hover {
+				background: var(--icon-bg, rgba(255, 255, 255, .08));
+			}
+
+			.segmented {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 4px;
+				padding: 4px;
+				background: var(--surface-2, rgba(255, 255, 255, .04));
+				border-radius: 10px;
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				margin-bottom: 10px;
+			}
+
+			.segmented input {
+				display: none;
+			}
+
+			.segmented label {
+				text-align: center;
+				padding: 6px 0;
+				border-radius: 7px;
+				font-size: 12.5px;
+				cursor: pointer;
+				color: var(--muted, #8c93a6);
+				transition: all .18s;
+				user-select: none;
+			}
+
+			.segmented input:checked+label {
+				background: var(--brand-soft, rgba(59, 130, 246, .15));
+				color: var(--brand, #3b82f6);
+				box-shadow: inset 0 0 0 1px var(--brand, #3b82f6);
+			}
+
+			.field-row {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 10px;
+			}
+
+			.field-row>span {
+				font-size: 13px;
+				color: var(--muted, #8c93a6);
+			}
+
+			.stepper {
+				display: flex;
+				align-items: center;
+				background: var(--surface-2, rgba(255, 255, 255, .04));
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				border-radius: 9px;
+				overflow: hidden;
+			}
+
+			.stepper button {
+				width: 30px;
+				height: 30px;
+				border: none;
+				background: transparent;
+				color: var(--text, #e9ebf2);
+				font-size: 15px;
+				cursor: pointer;
+				transition: background .15s;
+			}
+
+			.stepper button:hover {
+				background: var(--icon-bg, rgba(255, 255, 255, .08));
+			}
+
+			.stepper input {
+				width: 52px;
+				height: 30px;
+				border: none;
+				background: transparent;
+				color: var(--text, #e9ebf2);
+				text-align: center;
+				font: inherit;
+				font-size: 13px;
+				-moz-appearance: textfield;
+			}
+
+			.stepper input::-webkit-outer-spin-button,
+			.stepper input::-webkit-inner-spin-button {
+				-webkit-appearance: none;
+				margin: 0;
+			}
+
+			.dpad {
+				display: grid;
+				grid-template-columns: repeat(3, 40px);
+				grid-template-rows: repeat(2, 40px);
+				gap: 5px;
+				justify-content: center;
+				margin: 0 auto;
+			}
+
+			.dpad button {
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				background: var(--surface-2, rgba(255, 255, 255, .04));
+				color: var(--text, #e9ebf2);
+				border-radius: 9px;
+				font-size: 17px;
+				cursor: pointer;
+				transition: all .15s;
+				display: grid;
+				place-items: center;
+			}
+
+			.dpad button:hover {
+				background: var(--brand-soft, rgba(59, 130, 246, .15));
+				border-color: var(--brand, #3b82f6);
+				color: var(--brand, #3b82f6);
+			}
+
+			.dpad .up {
+				grid-column: 2;
+				grid-row: 1;
+			}
+
+			.dpad .left {
+				grid-column: 1;
+				grid-row: 2;
+			}
+
+			.dpad .down {
+				grid-column: 2;
+				grid-row: 2;
+			}
+
+			.dpad .right {
+				grid-column: 3;
+				grid-row: 2;
+			}
+
+			/* ===== 地形预设 chips ===== */
+			.terrain-palette {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 4px;
+			}
+
+			.terrain-chip {
+				display: inline-flex;
+				align-items: center;
+				gap: 6px;
+				padding: 5px 9px;
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				border-radius: 8px;
+				background: var(--surface-2, rgba(255, 255, 255, .04));
+				color: var(--text, #e9ebf2);
+				font-size: 12px;
+				cursor: pointer;
+				transition: all .15s;
+				font-family: inherit;
+			}
+
+			.terrain-chip:hover {
+				background: var(--icon-bg, rgba(255, 255, 255, .08));
+			}
+
+			.terrain-chip.active {
+				border-color: var(--brand, #3b82f6);
+				background: var(--brand-soft, rgba(59, 130, 246, .15));
+				color: var(--brand, #3b82f6);
+			}
+
+			.terrain-chip .chip-swatch {
+				width: 12px;
+				height: 12px;
+				border-radius: 3px;
+				background: var(--chip-color, #888);
+				box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .15);
+				flex: none;
+			}
+
+			.terrain-chip.terrain-erase .chip-swatch {
+				background: transparent;
+				box-shadow: none;
+				position: relative;
+			}
+
+			#set_userList,
+			#set_mapList {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 12.5px;
+				color: var(--text, #e9ebf2);
+			}
+
+			#set_userList td,
+			#set_mapList td {
+				padding: 4px 3px;
+				vertical-align: middle;
+			}
+
+			#set_userList tr:hover,
+			#set_mapList tr:hover {
+				background: var(--surface-2, rgba(255, 255, 255, .04));
+			}
+
+			#set_userList img,
+			#set_mapList img {
+				max-width: 1.5em;
+				max-height: 1.5em;
+				border-radius: 3px;
+				display: block;
+			}
+
+			#set_userList td:first-child,
+			#set_mapList td:first-child {
+				width: 1.6em;
+			}
+
+			#set_mapList .btn-sm,
+			#set_userList .btn-sm {
+				padding: .2em .3em;
+				font-size: 11px;
+				margin: 0 .5px;
+				line-height: 1;
+			}
+
+			#set_mapList td.text-end,
+			#set_userList td.text-end {
+				white-space: nowrap;
+			}
+
+			.position-absolute {
+				position: absolute;
+			}
+
+			.bottom-0 {
+				bottom: 0;
+			}
+
+			.w-100 {
+				width: 100%;
+			}
+
+			.h-25 {
+				height: 25%;
+			}
+
+			.h-100 {
+				height: 100%;
+			}
+
+			.d-block {
+				display: block;
+			}
+
+			.overflow-hidden {
+				overflow: hidden;
+			}
+
+			.rounded-sm {
+				border-radius: 3px;
+			}
+
+			.text-end {
+				text-align: right;
+			}
+
+			.text-center {
+				text-align: center;
+			}
+
+			.p-0 {
+				padding: 0;
+			}
+
+			.border-bottom {
+				border-bottom: 1px solid var(--border, rgba(255, 255, 255, .09));
+			}
+
+			.bg-body-tertiary {
+				background: var(--surface-2, rgba(255, 255, 255, .04));
+			}
+
+			.text-sm {
+				font-size: .85em;
+			}
+
+			.form-text {
+				color: var(--muted, #8c93a6);
+				font-size: .82em;
+			}
+
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: .25em;
+				padding: .38em .7em;
+				border: none;
+				border-radius: 6px;
+				cursor: pointer;
+				font: inherit;
+				font-size: 12.5px;
+				line-height: 1.1;
+				color: #fff;
+				transition: filter .15s;
+			}
+
+			.btn:hover {
+				filter: brightness(1.12);
+			}
+
+			.btn-sm {
+				padding: .28em .45em;
+				font-size: 11px;
+			}
+
+			.btn-primary {
+				background: var(--brand, #3b82f6);
+			}
+
+			.btn-secondary {
+				background: var(--surface-2, rgba(255, 255, 255, .08));
+				color: var(--text, #e9ebf2);
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+			}
+
+			.btn-warning {
+				background: #d9a300;
+				color: #1a1200;
+			}
+
+			.btn-danger {
+				background: #d63c4a;
+			}
+
+			.form-control {
+				display: block;
+				width: 100%;
+				padding: .38em .55em;
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				border-radius: 7px;
+				background: var(--surface-2, rgba(255, 255, 255, .04));
+				color: var(--text, #e9ebf2);
+				font: inherit;
+				font-size: .92em;
+				transition: border-color .15s, box-shadow .15s;
+			}
+
+			.form-control:focus {
+				outline: none;
+				border-color: var(--brand, #3b82f6);
+				box-shadow: 0 0 0 3px var(--focus-ring, rgba(59, 130, 246, .25));
+			}
+
+			/* ============================================================ */
+			/* 弹窗                                                         */
+			/* ============================================================ */
+			.modal {
+				position: fixed;
+				inset: 0;
+				z-index: 99999;
+				display: none;
+				align-items: center;
+				justify-content: center;
+				padding: 20px;
+				background: rgba(0, 0, 0, .45);
+				backdrop-filter: blur(4px);
+				-webkit-backdrop-filter: blur(4px);
+			}
+
+			.modal.show {
+				display: flex;
+				animation: modalIn .2s ease;
+			}
+
+			@keyframes modalIn {
+				from {
+					opacity: 0;
+				}
+
+				to {
+					opacity: 1;
+				}
+			}
+
+			.modal-card {
+				width: min(660px, 100%);
+				max-height: calc(100vh - 40px);
+				overflow-y: auto;
+				background: var(--surface, #1a1d24);
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				border-radius: 16px;
+				box-shadow: var(--shadow-2, 0 24px 70px rgba(0, 0, 0, .6));
+				animation: cardIn .25s cubic-bezier(.4, 0, .2, 1);
+			}
+
+			@keyframes cardIn {
+				from {
+					transform: translateY(10px) scale(.98);
+					opacity: 0;
+				}
+
+				to {
+					transform: none;
+					opacity: 1;
+				}
+			}
+
+			.modal-head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 14px 20px;
+				border-bottom: 1px solid var(--border, rgba(255, 255, 255, .09));
+			}
+
+			.modal-head h5 {
+				margin: 0;
+				font-size: 15px;
+				font-weight: 600;
+				color: var(--text, #e9ebf2);
+			}
+
+			.modal-close {
+				width: 30px;
+				height: 30px;
+				display: grid;
+				place-items: center;
+				border-radius: 8px;
+				border: none;
+				background: transparent;
+				color: var(--muted, #8c93a6);
+				font-size: 18px;
+				cursor: pointer;
+				transition: all .15s;
+			}
+
+			.modal-close:hover {
+				background: var(--icon-bg, rgba(255, 255, 255, .08));
+				color: var(--text, #e9ebf2);
+			}
+
+			.modal-body {
+				padding: 16px 20px 20px;
+			}
+
+			/* 预设区 */
+			.preset-section {
+				margin-bottom: 14px;
+			}
+
+			.preset-label {
+				font-size: 11px;
+				font-weight: 600;
+				letter-spacing: .04em;
+				text-transform: uppercase;
+				color: var(--muted, #8c93a6);
+				margin-bottom: 8px;
+			}
+
+			.preset-row {
+				display: flex;
+				flex-wrap: wrap;
+				align-content: flex-start;
+				gap: 8px overflow-y: auto;
+				overflow-x: hidden;
+				max-height: 174px;
+				padding: 2px 2px 6px;
+				scrollbar-width: thin;
+			}
+
+			.preset-row::-webkit-scrollbar {
+				width: 4px;
+			}
+
+			.preset-row::-webkit-scrollbar-thumb {
+				background: var(--border-strong, #d1d5db);
+				border-radius: 2px;
+			}
+
+			.preset-card {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 4px;
+				padding: 6px;
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				border-radius: 10px;
+				background: var(--surface-2, rgba(255, 255, 255, .04));
+				cursor: pointer;
+				flex: none;
+				transition: all .15s;
+				font-family: inherit;
+			}
+
+			.preset-card:hover {
+				border-color: var(--brand, #3b82f6);
+				background: var(--brand-soft, rgba(59, 130, 246, .12));
+			}
+
+			.preset-card.selected {
+				border-color: var(--brand, #3b82f6);
+				box-shadow: 0 0 0 2px var(--brand-soft, rgba(59, 130, 246, .25));
+			}
+
+			.preset-thumb {
+				width: 48px;
+				height: 48px;
+				display: grid;
+				place-items: center;
+				border-radius: 8px;
+				background: rgba(0, 0, 0, .15);
+				font-size: 22px;
+				font-weight: 700;
+				line-height: 1;
+				overflow: hidden;
+				background-size: cover;
+				background-position: center;
+			}
+
+			.preset-name {
+				font-size: 10.5px;
+				color: var(--text, #e9ebf2);
+				max-width: 64px;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+				opacity: .85;
+			}
+
+			/* 编辑器主体 */
+			.editor-grid {
+				display: grid;
+				grid-template-columns: 190px 1fr;
+				gap: 18px;
+				margin-bottom: 14px;
+			}
+
+			@media (max-width: 560px) {
+				.editor-grid {
+					grid-template-columns: 1fr;
+				}
+			}
+
+			.preview-wrap {
+				display: flex;
+				align-items: flex-start;
+			}
+
+			.preview-box {
+				width: 190px;
+				height: 190px;
+				display: grid;
+				place-items: center;
+				border-radius: 12px;
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				background: repeating-conic-gradient(var(--surface-2, rgba(255, 255, 255, .04)) 0% 25%, transparent 0% 50%) 50% / 16px 16px;
+				overflow: hidden;
+				flex: none;
+			}
+
+			.preview-box.map-preview-box {
+				background: repeating-conic-gradient(rgba(255, 255, 255, .03) 0% 25%, transparent 0% 50%) 50% / 16px 16px;
+			}
+
+			.form-section {
+				display: flex;
+				flex-direction: column;
+				gap: 10px;
+			}
+
+			.form-row {
+				display: grid;
+				grid-template-columns: 68px 1fr;
+				gap: 10px;
+				align-items: center;
+			}
+
+			.form-row>span {
+				color: var(--muted, #8c93a6);
+				font-size: 12.5px;
+			}
+
+			.form-row .inline {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
+
+			.form-row .inline input[type="number"] {
+				width: 78px;
+			}
+
+			.form-row .inline .divider {
+				color: var(--muted, #8c93a6);
+			}
+
+			.form-row-divider {
+				grid-column: 1 / -1;
+				height: 1px;
+				background: var(--border, rgba(255, 255, 255, .09));
+				margin: 2px 0;
+			}
+
+			/* 颜色条 */
+			.color-strip {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 3px;
+				max-height: 4.5em;
+				overflow-y: auto;
+				padding: 4px;
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				border-radius: 8px;
+				background: var(--surface-2, rgba(255, 255, 255, .04));
+			}
+
+			.colorbox {
+				width: 16px;
+				height: 16px;
+				border-radius: 3px;
+				cursor: pointer;
+				transition: transform .1s;
+				flex: none;
+				box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
+			}
+
+			.colorbox:hover {
+				transform: scale(1.15);
+			}
+
+			.colorbox.active {
+				box-shadow: 0 0 0 2px var(--brand, #3b82f6);
+			}
+
+			.modal-actions {
+				display: flex;
+				gap: 8px;
+				justify-content: flex-end;
+				margin-top: 4px;
+			}
+
+			.modal-actions .btn {
+				padding: .6em 1.15em;
+				font-size: 13px;
+				border-radius: 8px;
+			}
+
+			#newTokenImg {
+				display: block;
+			}
+
+			#newMapImg {
+				display: block;
+			}
+
+			@media (max-width: 640px) {
+				.tool-panel {
+					width: calc(100vw - 24px);
+					max-height: 65vh;
+					top: auto;
+					bottom: 12px;
+					right: 12px;
+					transform: none;
+				}
+
+				.tool-panel.collapsed {
+					width: 46px;
+					height: 46px;
+					right: 12px;
+					bottom: 12px;
+				}
+
+				.form-row {
+					grid-template-columns: 56px 1fr;
+				}
+			}
+
+			/* ===== 图层面板 ===== */
+			.layer-list {
+				display: flex;
+				flex-direction: column;
+				gap: 2px;
+				margin: 0 -4px;
+			}
+
+			.layer-row {
+				display: flex;
+				align-items: center;
+				gap: 4px;
+				padding: 4px;
+				border-radius: 6px;
+				font-size: 12.5px;
+				color: var(--text, #e9ebf2);
+				transition: background .15s;
+				user-select: none;
+				cursor: default;
+			}
+
+			.layer-row:hover {
+				background: var(--surface-2, rgba(255, 255, 255, .04));
+			}
+
+			.layer-row.layer-selected {
+				background: var(--brand-soft, rgba(59, 130, 246, .15));
+				box-shadow: inset 0 0 0 1px var(--brand, #3b82f6);
+			}
+
+			.layer-row.layer-dragging {
+				opacity: .4;
+			}
+
+			.layer-row.layer-drop-before {
+				box-shadow: inset 0 2px 0 var(--brand, #3b82f6);
+			}
+
+			.layer-row.layer-drop-after {
+				box-shadow: inset 0 -2px 0 var(--brand, #3b82f6);
+			}
+
+			.layer-row.layer-hidden .layer-thumb,
+			.layer-row.layer-hidden .layer-name {
+				opacity: .45;
+			}
+
+			.layer-btn {
+				width: 22px;
+				height: 22px;
+				display: grid;
+				place-items: center;
+				border: none;
+				background: transparent;
+				color: var(--muted, #8c93a6);
+				cursor: pointer;
+				border-radius: 4px;
+				flex: none;
+				padding: 0;
+				transition: background .12s, color .12s;
+			}
+
+			.layer-btn:hover {
+				background: var(--icon-bg, rgba(255, 255, 255, .08));
+				color: var(--text, #e9ebf2);
+			}
+
+			.layer-btn.active {
+				color: var(--brand, #3b82f6);
+			}
+
+			.layer-icon {
+				width: 13px;
+				height: 13px;
+				display: block;
+				pointer-events: none;
+			}
+
+			.layer-thumb {
+				width: 26px;
+				height: 26px;
+				border-radius: 4px;
+				flex: none;
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				background: var(--surface-2, rgba(255, 255, 255, .04));
+				background-size: contain;
+				background-position: center;
+				background-repeat: no-repeat;
+			}
+
+			.layer-info {
+				flex: 1 1 auto;
+				min-width: 0;
+				overflow: hidden;
+			}
+
+			.layer-name {
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				font-size: 12.5px;
+				line-height: 1.3;
+			}
+
+			.layer-sub {
+				font-size: 10.5px;
+				color: var(--muted, #8c93a6);
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				display: flex;
+				align-items: center;
+				gap: 4px;
+			}
+
+			.layer-hp-input {
+				width: 40px;
+				height: 16px;
+				padding: 0 3px;
+				border: 1px solid var(--border, rgba(255, 255, 255, .09));
+				background: var(--surface, #1a1d24);
+				color: var(--text, #e9ebf2);
+				border-radius: 3px;
+				font: inherit;
+				font-size: 10.5px;
+				text-align: center;
+				-moz-appearance: textfield;
+			}
+
+			.layer-hp-input::-webkit-outer-spin-button,
+			.layer-hp-input::-webkit-inner-spin-button {
+				-webkit-appearance: none;
+				margin: 0;
+			}
+
+			.layer-actions {
+				display: flex;
+				gap: 1px;
+				flex: none;
+			}
+
+			/* ===== 选中框 ===== */
+			#map_selection_box {
+				position: absolute;
+				pointer-events: none;
+				z-index: 16;
+				transform-origin: center center;
+				display: none;
+			}
+
+			#map_selection_box.visible {
+				display: block;
+			}
+
+			.sel-border {
+				position: absolute;
+				inset: 0;
+				border: 2px dashed var(--brand, #3b82f6);
+				border-radius: 2px;
+				pointer-events: none;
+				box-shadow: 0 0 0 1px rgba(0, 0, 0, .15);
+			}
+
+			.sel-handle {
+				position: absolute;
+				width: 12px;
+				height: 12px;
+				border: 2px solid var(--brand, #3b82f6);
+				background: #fff;
+				border-radius: 2px;
+				pointer-events: auto;
+				z-index: 1;
+				box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+				touch-action: none;
+			}
+
+			.sel-nw {
+				top: -6px;
+				left: -6px;
+				cursor: nwse-resize;
+			}
+
+			.sel-ne {
+				top: -6px;
+				right: -6px;
+				cursor: nesw-resize;
+			}
+
+			.sel-sw {
+				bottom: -6px;
+				left: -6px;
+				cursor: nesw-resize;
+			}
+
+			.sel-se {
+				bottom: -6px;
+				right: -6px;
+				cursor: nwse-resize;
+			}
+
+			.sel-rotate {
+				top: -30px;
+				left: 50%;
+				margin-left: -6px;
+				width: 12px;
+				height: 12px;
+				border-radius: 50%;
+				cursor: pointer;
+			}
+
+			.sel-rotate::after {
+				content: '';
+				position: absolute;
+				top: 100%;
+				left: 50%;
+				width: 2px;
+				height: 18px;
+				background: var(--brand, #3b82f6);
+				transform: translateX(-50%);
+				pointer-events: none;
+			}
+
+			.sel-rotate:hover {
+				background: var(--brand-soft, rgba(59, 130, 246, .15));
+			}
+
+			/* ===== 锁定元素不可交互 ===== */
+			.map-elem.map-locked {
+				pointer-events: none !important;
+			}
+		</style>
+	</head>
+	<body>
+		<svg width="0" height="0" style="position:absolute;pointer-events:none" aria-hidden="true">
+			<defs>
+				<symbol id="i-eye" viewBox="0 0 16 16">
+					<path d="M8 3C5 3 2.5 5 1 8c1.5 3 4 5 7 5s5.5-2 7-5c-1.5-3-4-5-7-5zm0 8a3 3 0 110-6 3 3 0 010 6z"
+						fill="currentColor" />
+				</symbol>
+				<symbol id="i-eye-off" viewBox="0 0 16 16">
+					<path
+						d="M8 3C5 3 2.5 5 1 8c.6 1.2 1.4 2.3 2.4 3.1l1.2-1.2A6 6 0 012.3 8c1.2-2.2 3.4-4 5.7-4 .7 0 1.4.1 2 .4l1.3-1.3C10.3 3.1 9.2 3 8 3zM3 3.1L2 4.1l10 10 1-1z"
+						fill="currentColor" />
+				</symbol>
+				<symbol id="i-lock" viewBox="0 0 16 16">
+					<path d="M11 7V5a3 3 0 00-6 0v2H4v6h8V7h-1zM7 7V5a1 1 0 012 0v2H7zm3 5H6V9h4z"
+						fill="currentColor" />
+				</symbol>
+				<symbol id="i-unlock" viewBox="0 0 16 16">
+					<path d="M11 7V5a3 3 0 00-5.8-.9 1 1 0 00.9.4 2 2 0 011.9 1.3V7H4v6h8V7h-1zM6 9h4v2H6z"
+						fill="currentColor" />
+				</symbol>
+				<symbol id="i-up" viewBox="0 0 16 16">
+					<path d="M8 4l4 5H9v3H7V9H4z" fill="currentColor" />
+				</symbol>
+				<symbol id="i-down" viewBox="0 0 16 16">
+					<path d="M8 12L4 7h3V4h2v3h3z" fill="currentColor" />
+				</symbol>
+				<symbol id="i-edit" viewBox="0 0 16 16">
+					<path d="M10 3l3 3L6 13H3v-3z" fill="none" stroke="currentColor" stroke-width="1.5"
+						stroke-linejoin="round" />
+				</symbol>
+				<symbol id="i-trash" viewBox="0 0 16 16">
+					<path d="M3 4h10v1H3zM5 3h6v1H5zM4 6h8l-.7 7.2a1 1 0 01-1 .8H5.7a1 1 0 01-1-.8z"
+						fill="currentColor" />
+				</symbol>
+			</defs>
+		</svg>
+		<script src="../../assets/js/header.js"></script>
+
+		<!-- 默认预设（fallback），presets.js 加载成功会覆盖 -->
+		<script>
+			window.PRESETS_DEFAULT = {
+				terrain: {
+					wall: {
+						name: '墙',
+						color: '#8b7d6b'
+					},
+					grass: {
+						name: '草',
+						color: '#7cb342'
+					},
+					forest: {
+						name: '森林',
+						color: '#2e7d32'
+					},
+					water: {
+						name: '水',
+						color: '#42a5f5'
+					}
+				},
+				token: [{
+						name: '角',
+						color: 'mediumorchid',
+						icon: '角'
+					},
+					{
+						name: '村',
+						color: '#3b82f6',
+						icon: '村'
+					}
+				],
+				map: [{
+					name: '砖墙',
+					bg: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect width='60' height='60' fill='%23e2e8f0'/%3E%3Cg stroke='%23cbd5e1' stroke-width='1.5' fill='none'%3E%3Cpath d='M0 15h60 M0 30h60 M0 45h60'/%3E%3Cpath d='M0 0v15 M20 0v15 M40 0v15 M60 0v15'/%3E%3Cpath d='M10 15v15 M30 15v15 M50 15v15'/%3E%3Cpath d='M0 30v15 M20 30v15 M40 30v15 M60 30v15'/%3E%3Cpath d='M10 45v15 M30 45v15 M50 45v15'/%3E%3C/g%3E%3C/svg%3E\")",
+					tile: '3em 3em'
+				}]
+			};
+		</script>
+		<script src="presets.js"></script>
+		<script>
+			window.PRESETS = window.PRESETS || window.PRESETS_DEFAULT;
+		</script>
+
+		<main class="map-stage">
+			<div id="map_main">
+				<div id="terrain_layer"><svg id="terrain_svg"></svg></div>
+				<div id="map_line"></div>
+				<div id="map_line_hexagon" style="display: none;"></div>
+				<div id="token_bg"></div>
+				<div id="token_user"></div>
+				<svg id="move_path_svg"></svg>
+				<div id="map_selection_box">
+					<div class="sel-border"></div>
+					<div class="sel-handle sel-nw" data-handle="nw"></div>
+					<div class="sel-handle sel-ne" data-handle="ne"></div>
+					<div class="sel-handle sel-sw" data-handle="sw"></div>
+					<div class="sel-handle sel-se" data-handle="se"></div>
+					<div class="sel-handle sel-rotate" data-handle="rotate"></div>
+				</div>
+			</div>
+		</main>
+
+		<aside class="tool-panel" id="toolPanel">
+			<div class="panel-head" id="panelDragHandle">
+				<div class="panel-title">
+					<span class="panel-icon">🗺️</span>
+					<div><strong>跑团地图</strong><small>在线跑团地图工具</small></div>
+				</div>
+				<button type="button" class="panel-toggle" onclick="togglePanel()" title="折叠">✕</button>
+			</div>
+
+			<div class="panel-tabs">
+				<button class="tab-btn active" data-tab="shortcut">快捷</button>
+				<button class="tab-btn" data-tab="tokens">角色</button>
+				<button class="tab-btn" data-tab="maps">地形</button>
+				<button class="tab-btn" data-tab="terrain">绘制</button>
+			</div>
+
+			<div class="panel-body">
+				<div class="tab-pane active" data-pane="shortcut">
+					<div class="tp-section">
+						<h3>格子</h3>
+						<div class="segmented">
+							<input type="radio" name="box" id="box_square" checked onchange="onGridTypeChange()">
+							<label for="box_square">正方形</label>
+							<input type="radio" name="box" id="box_hexagon" onchange="onGridTypeChange()">
+							<label for="box_hexagon">六边形</label>
+						</div>
+						<div class="field-row">
+							<span>格子大小</span>
+							<div class="stepper">
+								<button type="button" title="缩小"
+									onclick="this.nextElementSibling.stepDown();this.nextElementSibling.onchange();">−</button>
+								<input type="number" id="boxSize" value="40" min="25" onchange="onBoxSizeChange()">
+								<button type="button" title="放大"
+									onclick="this.previousElementSibling.stepUp();this.previousElementSibling.onchange();">+</button>
+							</div>
+						</div>
+						<div class="field-row" style="margin-top:8px;">
+							<span>半格移动</span>
+							<input type="checkbox" id="halfGridToggle" onchange="onHalfGridToggle(this.checked)"
+								style="accent-color: var(--brand, #3b82f6); width: 18px; height: 18px; cursor: pointer;">
+						</div>
+						<small class="form-text" style="display:block;margin-top:4px;">仅方形格子有效，开启后可按半格移动/吸附</small>
+					</div>
+
+					<div class="tp-section">
+						<h3>地图移动 <small style="text-transform:none;font-weight:400;letter-spacing:0;">（方向键）</small></h3>
+						<div class="dpad">
+							<button type="button" class="up" title="上移 (↑)" onclick="map_move([0,-1])">↑</button>
+							<button type="button" class="left" title="左移 (←)" onclick="map_move([-1,0])">←</button>
+							<button type="button" class="down" title="下移 (↓)" onclick="map_move([0,1])">↓</button>
+							<button type="button" class="right" title="右移 (→)" onclick="map_move([1,0])">→</button>
+						</div>
+					</div>
+
+					<div class="tp-section">
+						<h3>存档</h3>
+						<div class="panel-actions" style="margin-bottom:8px;">
+							<button type="button" class="action-btn action-primary" onclick="exportData()">💾
+								导出</button>
+							<button type="button" class="action-btn action-secondary" onclick="importData()">📥
+								导入</button>
+						</div>
+						<small class="form-text">将地图、角色、地形导出为 JSON 文件，下次可导入恢复</small>
+					</div>
+				</div>
+
+				<div class="tab-pane" data-pane="tokens">
+					<div class="panel-actions">
+						<button type="button" class="action-btn action-primary full" onclick="openNewTokenModal()">
+							➕ 新角色
+						</button>
+					</div>
+
+					<div class="tp-section">
+						<div class="field-row">
+							<span>血条常显</span>
+							<input type="checkbox" id="hpAlwaysShow" checked
+								style="accent-color: var(--brand, #3b82f6); width: 18px; height: 18px; cursor: pointer;"
+								onchange="toggleHpVisibility()">
+						</div>
+						<small class="form-text" style="display:block;margin-top:4px;">关闭后仅鼠标悬停时显示血条</small>
+					</div>
+
+					<div class="tp-section">
+						<h3>角色列表</h3>
+						<div class="layer-list" id="set_userList"></div>
+					</div>
+				</div>
+
+				<div class="tab-pane" data-pane="maps">
+					<div class="panel-actions">
+						<button type="button" class="action-btn action-primary full" onclick="openNewMapModal()">
+							➕ 新地形
+						</button>
+					</div>
+					<div class="tp-section">
+						<div class="field-row">
+							<span>拖拽移动元素</span>
+							<input type="checkbox" id="mapDragMode"
+								style="accent-color: var(--brand, #3b82f6); width: 18px; height: 18px; cursor: pointer;"
+								onchange="toggleMapDragMode(this.checked)">
+						</div>
+						<small class="form-text" style="display:block;margin-top:4px;">开启后可直接点击地图元素拖动位置</small>
+					</div>
+					<div class="tp-section">
+						<h3>地形图像 <small style="text-transform:none;font-weight:400;letter-spacing:0;">（上移显示在前）</small>
+						</h3>
+						<div class="layer-list" id="set_mapList"></div>
+					</div>
+				</div>
+
+				<div class="tab-pane" data-pane="terrain">
+					<div class="tp-section">
+						<h3>绘制工具</h3>
+						<div class="terrain-palette" id="terrainPalette"></div>
+						<div class="field-row" style="margin-top:10px;">
+							<span>绘制模式</span>
+							<input type="checkbox" id="drawModeToggle" onchange="toggleDrawMode(this.checked)"
+								style="accent-color: var(--brand, #3b82f6); width: 18px; height: 18px; cursor: pointer;">
+						</div>
+						<button type="button" class="btn btn-danger" style="width:100%;margin-top:10px;"
+							onclick="clearAllTerrain()">
+							🗑️ 清除全部地形
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<button type="button" class="panel-fab" onclick="togglePanel()" title="展开工具">🧰</button>
+		</aside>
+
+		<!-- ============================================================ -->
+		<!-- 新角色弹窗（重构）                                            -->
+		<!-- ============================================================ -->
+		<div class="modal" id="newToken" onclick="if(event.target===this)closeModal('newToken')">
+			<div class="modal-card">
+				<div class="modal-head">
+					<h5>新角色</h5>
+					<button type="button" class="modal-close" onclick="closeModal('newToken')">×</button>
+				</div>
+				<div class="modal-body">
+					<div class="preset-section">
+						<div class="preset-label">角色预设</div>
+						<div class="preset-row" id="tokenPresets"></div>
+					</div>
+
+					<div class="editor-grid">
+						<div class="preview-wrap">
+							<div class="preview-box">
+								<img src="data:image/svg+xml," alt="token_img" id="newTokenImg"
+									style="width:1em;height:1em;font-size:64px;">
+							</div>
+						</div>
+
+						<div class="form-section">
+							<label class="form-row">
+								<span>名称</span>
+								<input type="text" value="角色名" class="form-control" id="token_name"
+									onchange="changeTokenImgSVG()">
+							</label>
+
+							<div class="form-row">
+								<span>颜色</span>
+								<div id="colorBox" class="color-strip"></div>
+							</div>
+
+							<hr class="form-row-divider">
+
+							<div class="form-row">
+								<span>血条</span>
+								<div class="inline">
+									<input type="checkbox" id="token_hp_show" checked
+										style="accent-color: var(--brand, #3b82f6); width:18px; height:18px;">
+									<input type="number" id="token_hp_max" min="0" value="20" class="form-control">
+								</div>
+							</div>
+
+							<div class="form-row">
+								<span>大小</span>
+								<div class="inline">
+									<input type="number" min="1" step="0.5" value="1" id="token_size_x"
+										class="form-control"
+										onchange="document.getElementById('newTokenImg').style.width=this.value+'em';">
+									<span class="divider">×</span>
+									<input type="number" min="1" step="0.5" value="1" id="token_size_y"
+										class="form-control"
+										onchange="document.getElementById('newTokenImg').style.height=this.value+'em';">
+								</div>
+							</div>
+
+							<hr class="form-row-divider">
+
+							<label class="form-row">
+								<span>图片</span>
+								<input type="file" accept="image/png,image/jpg,image/jpeg" class="form-control"
+									id="token_img_file"
+									onchange="loadImgFile(this,document.getElementById('newTokenImg'))">
+							</label>
+
+							<label class="form-row">
+								<span>网址</span>
+								<input type="text" value="" class="form-control" id="token_img_src"
+									onchange="changeTokenImgSVG(this.value);">
+							</label>
+						</div>
+					</div>
+
+					<div class="modal-actions">
+						<button type="button" class="btn btn-warning"
+							onclick="addNewToken(this.getAttribute('for_id'));closeModal('newToken')"
+							id="bt_changeToken">保存修改</button>
+						<button type="button" class="btn btn-primary"
+							onclick="addNewToken();closeModal('newToken')">加入新角色</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- ============================================================ -->
+		<!-- 新地形弹窗（重构）                                            -->
+		<!-- ============================================================ -->
+		<div class="modal" id="newMap" onclick="if(event.target===this)closeModal('newMap')">
+			<div class="modal-card">
+				<div class="modal-head">
+					<h5>新地形图像</h5>
+					<button type="button" class="modal-close" onclick="closeModal('newMap')">×</button>
+				</div>
+				<div class="modal-body">
+					<!-- 类型 -->
+					<div class="preset-section">
+						<div class="preset-label">类型</div>
+						<div class="segmented" style="margin-bottom:0;">
+							<input type="radio" name="map_mode" id="map_mode_tile" checked onchange="onMapModeChange()">
+							<label for="map_mode_tile">平铺</label>
+							<input type="radio" name="map_mode" id="map_mode_object" onchange="onMapModeChange()">
+							<label for="map_mode_object">素材</label>
+						</div>
+					</div>
+
+					<!-- 预设 -->
+					<div class="preset-section">
+						<div class="preset-label">预设</div>
+						<div class="preset-row" id="mapPresets"></div>
+					</div>
+
+					<div class="editor-grid">
+						<div class="preview-wrap">
+							<div class="preview-box map-preview-box">
+								<div id="newMapImg"
+									style="width:3em;height:3em;font-size:40px;background-size:3em 3em;background-repeat:repeat;">
+								</div>
+							</div>
+						</div>
+
+						<div class="form-section">
+							<label class="form-row">
+								<span>图片</span>
+								<input type="file" accept="image/png,image/jpg,image/jpeg" class="form-control"
+									id="map_img_file" onchange="loadImgFile(this,document.getElementById('newMapImg'))">
+							</label>
+
+							<label class="form-row">
+								<span>网址</span>
+								<input type="text" class="form-control" id="map_img_src" value="" placeholder="留空使用预设"
+									onchange="document.getElementById('newMapImg').style.backgroundImage = this.value ? 'url(\''+ this.value+'\')' : 'none'">
+							</label>
+
+							<hr class="form-row-divider">
+
+							<div class="form-row">
+								<span>大小</span>
+								<div class="inline">
+									<input type="number" min="1" step="0.5" class="form-control" value="3"
+										id="map_size_x"
+										onchange="document.getElementById('newMapImg').style.width=this.value+'em';document.getElementById('map_tiled_x').value=this.value;document.getElementById('map_tiled_x').onchange()">
+									<span class="divider">×</span>
+									<input type="number" min="1" step="0.5" class="form-control" value="3"
+										id="map_size_y"
+										onchange="document.getElementById('newMapImg').style.height=this.value+'em';document.getElementById('map_tiled_y').value=this.value;document.getElementById('map_tiled_y').onchange()">
+								</div>
+							</div>
+
+							<div class="form-row" id="map_tile_size_row">
+								<span>平铺大小</span>
+								<div class="inline">
+									<input type="number" min="1" step="0.5" class="form-control" value="3"
+										id="map_tiled_x"
+										onchange="document.getElementById('newMapImg').style.backgroundSize=this.value+'em '+document.getElementById('map_tiled_y').value+'em';">
+									<span class="divider">×</span>
+									<input type="number" min="1" step="0.5" class="form-control" value="3"
+										id="map_tiled_y"
+										onchange="document.getElementById('newMapImg').style.backgroundSize=document.getElementById('map_tiled_x').value+'em '+this.value+'em';">
+								</div>
+							</div>
+
+							<div class="form-row">
+								<span>位置</span>
+								<div class="inline">
+									<input type="number" class="form-control" value="" id="map_pos_left"
+										placeholder="居中"
+										onchange="document.getElementById('newMapImg').style.left=this.value!=='' ? this.value+'em' : '';">
+									<span class="divider">×</span>
+									<input type="number" class="form-control" value="" id="map_pos_top" placeholder="居中"
+										onchange="document.getElementById('newMapImg').style.top=this.value!=='' ? this.value+'em' : '';">
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="modal-actions">
+						<button type="button" class="btn btn-warning"
+							onclick="addNewMap(this.getAttribute('for_id'));closeModal('newMap')"
+							id="bt_changeMap">保存修改</button>
+						<button type="button" class="btn btn-primary"
+							onclick="addNewMap();closeModal('newMap')">加入新地形</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			/* ================================================================ */
+			/* 预设数据（合并后的运行时引用）                                    */
+			/* ================================================================ */
+			var PRESETS = window.PRESETS;
+
+			/* 地形颜色映射 */
+			var terrainColors = {};
+			var terrainKeys = [];
+			for (var tk in PRESETS.terrain) {
+				if (!Object.prototype.hasOwnProperty.call(PRESETS.terrain, tk)) continue;
+				terrainColors[tk] = PRESETS.terrain[tk].color;
+				terrainKeys.push(tk);
+			}
+
+			/* ================================================================ */
+			/* 面板 / 弹窗 / 标签页                                              */
+			/* ================================================================ */
+			function togglePanel() {
+				document.getElementById('toolPanel').classList.toggle('collapsed');
+			}
+
+			function openModal(id) {
+				document.getElementById(id).classList.add('show');
+			}
+
+			function closeModal(id) {
+				document.getElementById(id).classList.remove('show');
+			}
+
+			function openNewTokenModal() {
+				// 重置表单
+				document.getElementById('token_name').value = '角色名';
+				document.getElementById('token_hp_max').value = 20;
+				document.getElementById('token_hp_show').checked = true;
+				document.getElementById('token_size_x').value = 1;
+				document.getElementById('token_size_y').value = 1;
+				document.getElementById('token_img_src').value = '';
+				document.getElementById('token_img_file').value = '';
+
+				// 重置预览尺寸
+				var preview = document.getElementById('newTokenImg');
+				preview.style.width = '1em';
+				preview.style.height = '1em';
+
+				// 重置状态，重新生成默认首字头像
+				tokenImgSource = 'name';
+				tokenPresetIcon = '';
+				tokenColor = 'mediumorchid';
+				changeTokenImgSVG();
+				updateColorBoxState();
+				syncColorBoxSelection();
+
+				// 取消预设高亮
+				document.querySelectorAll('#tokenPresets .preset-card').forEach(function(c) {
+					c.classList.remove('selected');
+				});
+
+				document.getElementById('bt_changeToken').style.display = 'none';
+				openModal('newToken');
+			}
+
+			function openNewMapModal() {
+				// 清空上一次遗留的位置（编辑旧元素时回填的坐标）
+				document.getElementById('map_pos_left').value = '';
+				document.getElementById('map_pos_top').value = '';
+				var img = document.getElementById('newMapImg');
+				img.style.left = '';
+				img.style.top = '';
+
+				// 隐藏"保存修改"（只对编辑有效）
+				document.getElementById('bt_changeMap').style.display = 'none';
+
+				openModal('newMap');
+			}
+
+			document.querySelectorAll('.tab-btn').forEach(function(btn) {
+				btn.addEventListener('click', function() {
+					var tab = this.getAttribute('data-tab');
+					document.querySelectorAll('.tab-btn').forEach(function(b) {
+						b.classList.toggle('active', b === btn);
+					});
+					document.querySelectorAll('.tab-pane').forEach(function(p) {
+						p.classList.toggle('active', p.getAttribute('data-pane') === tab);
+					});
+				});
+			});
+
+			/* 面板拖拽 */
+			(function initDraggablePanel() {
+				var panel = document.getElementById('toolPanel');
+				var handle = document.getElementById('panelDragHandle');
+				var dragState = null;
+
+				handle.addEventListener('pointerdown', function(e) {
+					if (e.button !== 0) return;
+					if (e.target.closest('button, input, select, textarea, a')) return;
+					var rect = panel.getBoundingClientRect();
+					dragState = {
+						offsetX: e.clientX - rect.left,
+						offsetY: e.clientY - rect.top
+					};
+					panel.style.left = rect.left + 'px';
+					panel.style.top = rect.top + 'px';
+					panel.style.right = 'auto';
+					panel.style.transform = 'none';
+					panel.classList.add('dragging');
+					handle.setPointerCapture(e.pointerId);
+				});
+				handle.addEventListener('pointermove', function(e) {
+					if (!dragState || !handle.hasPointerCapture(e.pointerId)) return;
+					var maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
+					var maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
+					panel.style.left = Math.max(0, Math.min(e.clientX - dragState.offsetX, maxLeft)) + 'px';
+					panel.style.top = Math.max(0, Math.min(e.clientY - dragState.offsetY, maxTop)) + 'px';
+				});
+
+				function endDrag(e) {
+					if (!dragState) return;
+					dragState = null;
+					panel.classList.remove('dragging');
+					if (handle.hasPointerCapture && handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e
+						.pointerId);
+				}
+				handle.addEventListener('lostpointercapture', endDrag);
+				handle.addEventListener('pointerup', endDrag);
+
+				window.addEventListener('resize', function() {
+					if (!panel.style.left || panel.classList.contains('collapsed')) return;
+					var maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
+					var maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
+					panel.style.left = Math.min(parseFloat(panel.style.left), maxLeft) + 'px';
+					panel.style.top = Math.min(parseFloat(panel.style.top), maxTop) + 'px';
+				});
+			})();
+
+			/* ================================================================ */
+			/* 常量与状态                                                       */
+			/* ================================================================ */
+			var HEX_ROW_H = 0.866;
+			var HEX_CENTER_Y = 0.5775;
+
+			var tokenColor = "mediumorchid";
+			var save_userList = [];
+			var save_mapList = [];
+			var currentGridIsHex = false;
+			var halfGridMode = false;
+
+			var gridOffsetX = 0,
+				gridOffsetY = 0;
+
+			var onMouse = null;
+			var dragStartX = 0,
+				dragStartY = 0;
+			var dragStartEmX = 0,
+				dragStartEmY = 0;
+			var dragIsHex = false;
+			var ghostEl = null;
+			var movePathSvg = document.getElementById('move_path_svg');
+			var movePathLine = null;
+
+			var currentTerrain = terrainKeys[0] || 'wall';
+			var tokenImgSource = 'name';
+			var tokenPresetIcon = '';
+			var drawMode = false;
+			var mapDragMode = false;
+			var mapDrag = null;
+			var terrainGrid = {};
+			var terrainElements = {};
+			var TERRAIN_OFFSET = 5000;
+
+			/* ================================================================ */
+			/* 预设渲染                                                         */
+			/* ================================================================ */
+			function renderTerrainPalette() {
+				var box = document.getElementById('terrainPalette');
+				box.innerHTML = '';
+				terrainKeys.forEach(function(k) {
+					var p = PRESETS.terrain[k];
+					var chip = document.createElement('button');
+					chip.type = 'button';
+					chip.className = 'terrain-chip' + (k === currentTerrain ? ' active' : '');
+					chip.dataset.key = k;
+					chip.style.setProperty('--chip-color', p.color);
+					chip.innerHTML = '<span class="chip-swatch"></span><span>' + p.name + '</span>';
+					chip.onclick = function() {
+						currentTerrain = k;
+						box.querySelectorAll('.terrain-chip').forEach(function(c) {
+							c.classList.toggle('active', c.dataset.key === k);
+						});
+					};
+					box.appendChild(chip);
+				});
+				/* 擦除 */
+				var erase = document.createElement('button');
+				erase.type = 'button';
+				erase.className = 'terrain-chip terrain-erase' + (currentTerrain === 'erase' ? ' active' : '');
+				erase.dataset.key = 'erase';
+				erase.innerHTML = '<span class="chip-swatch">✕</span><span>擦除</span>';
+				erase.onclick = function() {
+					currentTerrain = 'erase';
+					box.querySelectorAll('.terrain-chip').forEach(function(c) {
+						c.classList.toggle('active', c.dataset.key === 'erase');
+					});
+				};
+				box.appendChild(erase);
+			}
+
+			function renderTokenPresets() {
+				var box = document.getElementById('tokenPresets');
+				box.innerHTML = '';
+
+				(PRESETS.token || []).forEach(function(p, idx) {
+					var card = document.createElement('button');
+					card.type = 'button';
+					card.className = 'preset-card';
+					card.dataset.idx = idx;
+
+					var thumb = document.createElement('div');
+					thumb.className = 'preset-thumb';
+
+					if (p.img) {
+						/* 图片预设：以背景图展示缩略图 */
+						thumb.style.backgroundImage = 'url("' + p.img + '")';
+						thumb.style.backgroundSize = 'cover';
+						thumb.style.backgroundPosition = 'center';
+					} else {
+						/* 文字 / emoji 预设 */
+						thumb.style.color = p.color || '#fff';
+						thumb.textContent = p.icon || p.name.charAt(0);
+					}
+					card.appendChild(thumb);
+
+					var nameEl = document.createElement('div');
+					nameEl.className = 'preset-name';
+					nameEl.textContent = p.name;
+					card.appendChild(nameEl);
+
+					card.onclick = function() {
+						document.getElementById('token_name').value = p.name;
+
+						if (p.img) {
+							var img = document.getElementById('newTokenImg');
+							img.src = p.img;
+							img.alt = p.name;
+							img.title = p.name;
+							document.getElementById('token_img_src').value =
+								p.img.length <= 500 ? p.img : '图片数据';
+							tokenImgSource = 'custom';
+							tokenPresetIcon = '';
+						} else {
+							tokenColor = p.color || tokenColor;
+							tokenImgSource = 'preset';
+							tokenPresetIcon = p.icon || p.name.charAt(0);
+							changeTokenImgSVG("data:image/svg+xml,", tokenPresetIcon);
+							syncColorBoxSelection();
+						}
+
+						box.querySelectorAll('.preset-card').forEach(function(c) {
+							c.classList.toggle('selected', c === card);
+						});
+					};
+
+					box.appendChild(card);
+				});
+			}
+
+			function getCurrentMapMode() {
+				var el = document.getElementById('map_mode_object');
+				return el && el.checked ? 'object' : 'tile';
+			}
+
+			function onMapModeChange() {
+				var mode = getCurrentMapMode();
+
+				// 平铺大小行显隐
+				var tileRow = document.getElementById('map_tile_size_row');
+				if (tileRow) tileRow.style.display = mode === 'tile' ? '' : 'none';
+
+				// 切换时重置尺寸与预览样式(用户主动切换类型,重置合理)
+				var img = document.getElementById('newMapImg');
+				var sizeX = document.getElementById('map_size_x');
+				var sizeY = document.getElementById('map_size_y');
+				var tiledX = document.getElementById('map_tiled_x');
+				var tiledY = document.getElementById('map_tiled_y');
+
+				if (mode === 'object') {
+					sizeX.value = 1.5;
+					sizeY.value = 1.5;
+					img.style.width = '1.5em';
+					img.style.height = '1.5em';
+					img.style.backgroundRepeat = 'no-repeat';
+					img.style.backgroundSize = 'contain';
+					img.style.backgroundPosition = 'center';
+				} else {
+					sizeX.value = 3;
+					sizeY.value = 3;
+					tiledX.value = 3;
+					tiledY.value = 3;
+					img.style.width = '3em';
+					img.style.height = '3em';
+					img.style.backgroundRepeat = 'repeat';
+					img.style.backgroundSize = '3em 3em';
+					img.style.backgroundPosition = '';
+				}
+
+				renderMapPresets();
+				// 清空预设选中
+				var box = document.getElementById('mapPresets');
+				if (box) {
+					box.querySelectorAll('.preset-card').forEach(function(c) {
+						c.classList.remove('selected');
+					});
+				}
+			}
+
+			function renderMapPresets() {
+				var box = document.getElementById('mapPresets');
+				box.innerHTML = '';
+				var mode = getCurrentMapMode();
+
+				(PRESETS.map || []).forEach(function(p) {
+					var pm = p.mode || 'tile';
+					if (pm !== mode) return; // 只显示与当前类型匹配的预设
+
+					var card = document.createElement('button');
+					card.type = 'button';
+					card.className = 'preset-card';
+
+					var thumb = document.createElement('div');
+					thumb.className = 'preset-thumb';
+					thumb.style.backgroundImage = p.bg;
+					if (mode === 'object') {
+						thumb.style.backgroundSize = 'contain';
+						thumb.style.backgroundRepeat = 'no-repeat';
+						thumb.style.backgroundPosition = 'center';
+					} else {
+						thumb.style.backgroundSize = p.tile || '3em 3em';
+					}
+					card.appendChild(thumb);
+
+					var name = document.createElement('div');
+					name.className = 'preset-name';
+					name.textContent = p.name;
+					card.appendChild(name);
+
+					card.onclick = function() {
+						applyMapPreset(p);
+						box.querySelectorAll('.preset-card').forEach(function(c) {
+							c.classList.toggle('selected', c === card);
+						});
+					};
+
+					box.appendChild(card);
+				});
+			}
+
+			function applyMapPreset(p) {
+				var img = document.getElementById('newMapImg');
+				img.style.backgroundImage = p.bg;
+
+				var mode = p.mode || 'tile';
+				if (mode === 'object') {
+					img.style.backgroundRepeat = 'no-repeat';
+					img.style.backgroundSize = 'contain';
+					img.style.backgroundPosition = 'center';
+
+					// 素材默认推荐大小,可在预设里用 size 覆盖
+					var sz = p.size || '1.5em 1.5em';
+					var parts = sz.split(' ');
+					var sx = parseFloat(parts[0]) || 1.5;
+					var sy = parseFloat(parts[1]) || 1.5;
+					img.style.width = sx + 'em';
+					img.style.height = sy + 'em';
+					document.getElementById('map_size_x').value = sx;
+					document.getElementById('map_size_y').value = sy;
+				} else {
+					img.style.backgroundRepeat = 'repeat';
+					img.style.backgroundPosition = '';
+					if (p.tile) {
+						img.style.backgroundSize = p.tile;
+						var tp = p.tile.split(' ');
+						document.getElementById('map_tiled_x').value = parseFloat(tp[0]) || 3;
+						document.getElementById('map_tiled_y').value = parseFloat(tp[1]) || 3;
+					}
+				}
+				document.getElementById('map_img_src').value = '';
+			}
+
+			/* ================================================================ */
+			/* 颜色选择器                                                       */
+			/* ================================================================ */
+			function loadColorBox() {
+				var color = ["LightPink", "Pink", "Crimson", "LavenderBlush", "PaleVioletRed", "HotPink", "DeepPink",
+					"MediumVioletRed", "Orchid", "Thistle", "plum", "Violet", "Magenta", "Fuchsia", "DarkMagenta", "Purple",
+					"MediumOrchid", "DarkOrchid", "Indigo", "BlueViolet", "MediumPurple", "MediumSlateBlue", "SlateBlue",
+					"DarkSlateBlue", "Lavender", "GhostWhite", "Blue", "MediumBlue", "MidnightBlue", "DarkBlue", "Navy",
+					"RoyalBlue", "CornflowerBlue", "LightSteelBlue", "LightSlateGray", "SlateGray", "AliceBlue", "SteelBlue",
+					"LightSkyBlue", "SkyBlue", "DeepSkyBlue", "LightBLue", "PowDerBlue", "CadetBlue", "Azure", "LightCyan",
+					"PaleTurquoise", "Cyan", "Aqua", "DarkTurquoise", "DarkSlateGray", "DarkCyan", "Teal", "MediumTurquoise",
+					"LightSeaGreen", "Turquoise", "MediumAquamarine", "MediumSpringGreen", "MintCream", "SpringGreen",
+					"SeaGreen", "Honeydew", "LightGreen", "PaleGreen", "DarkSeaGreen", "LimeGreen", "Lime", "ForestGreen",
+					"Green", "DarkGreen", "Chartreuse", "LawnGreen", "GreenYellow", "OliveDrab", "Beige",
+					"LightGoldenrodYellow", "Ivory", "LightYellow", "Yellow", "Olive", "DarkKhaki", "LemonChiffon", "Khaki",
+					"Gold", "GoldEnrod", "FloralWhite", "OldLace", "Wheat", "Moccasin", "Orange", "PapayaWhip",
+					"BlanchedAlmond", "NavajoWhite", "AntiqueWhite", "Tan", "Bisque", "DarkOrange", "Linen", "Peru",
+					"PeachPuff", "SandyBrown", "Chocolate", "SaddleBrown", "SeaShell", "Sienna", "LightSalmon", "Coral",
+					"OrangeRed", "DarkSalmon", "Tomato", "MistyRose", "Salmon", "Snow", "LightCoral", "RosyBrown",
+					"IndianRed", "Red", "Brown", "FireBrick", "DarkRed", "Maroon", "White", "WhiteSmoke", "Gainsboro",
+					"LightGrey", "Silver", "DarkGray", "Gray", "DimGray", "Black"
+				];
+				var colorBox = document.getElementById("colorBox");
+				for (var i = 0; i < color.length; i++) {
+					var div = document.createElement("div");
+					div.className = "colorbox";
+					div.style.backgroundColor = color[i];
+					div.setAttribute("color", color[i]);
+					colorBox.appendChild(div);
+					div.onclick = function() {
+						tokenColor = this.getAttribute("color");
+						if (tokenImgSource === 'preset' && tokenPresetIcon) {
+							/* 预设模式：预设 icon + 新颜色 */
+							changeTokenImgSVG("data:image/svg+xml,", tokenPresetIcon);
+						} else if (tokenImgSource === 'name') {
+							/* 名称模式：名称首字 + 新颜色 */
+							changeTokenImgSVG("data:image/svg+xml,");
+						}
+						/* custom 模式：不重生成，只改颜色值 */
+						syncColorBoxSelection();
+					};
+				}
+			}
+
+			function syncColorBoxSelection() {
+				var list = document.getElementById('colorBox').children;
+				for (var i = 0; i < list.length; i++) {
+					list[i].classList.toggle('active', list[i].getAttribute('color') === tokenColor);
+				}
+			}
+
+			function updateColorBoxState() {
+				var enabled = (tokenImgSource === 'name');
+				var row = document.getElementById('colorRow');
+				if (row) row.style.display = enabled ? '' : 'none';
+			}
+
+			/* ================================================================ */
+			/* 图标 / 图片加载                                                  */
+			/* ================================================================ */
+			function changeTokenImgSVG(src = null, displayChar = null) {
+
+				var img = document.getElementById("newTokenImg");
+				var name = document.getElementById("token_name").value;
+				img.alt = name;
+				img.title = name;
+				/* 名称变化触发（src 为 null）且不是"名称模式"：保持原图 */
+				if ((src === null || src === undefined) && tokenImgSource !== 'name') {
+					return;
+				}
+				/* src 为 null/undefined 表示由"名称变化"触发：
+				   若当前已是自定义图片（URL、"图片数据"或非 SVG data），保持不变 */
+				if (src === null || src === undefined) {
+					var currentSrc = document.getElementById("token_img_src").value;
+					if (currentSrc && currentSrc !== "" && currentSrc.indexOf("data:image/svg+xml") !== 0) {
+						return;
+					}
+					src = "data:image/svg+xml,";
+				}
+
+				/* 指定了图片地址：直接使用 */
+				if (src !== "data:image/svg+xml," && src !== "") {
+					img.src = src;
+					document.getElementById("token_img_src").value =
+						src.length <= 500 ? src : "图片数据";
+					tokenImgSource = 'custom';
+					tokenPresetIcon = '';
+					return;
+				}
+
+				/* 取首字符（按字素簇，兼容 emoji） */
+				var firstChar = displayChar || '';
+				if (!firstChar) {
+					if (window.Intl && Intl.Segmenter) {
+						var seg = new Intl.Segmenter('zh', {
+							granularity: 'grapheme'
+						});
+						var it = seg.segment(name)[Symbol.iterator]();
+						var r = it.next();
+						if (!r.done) firstChar = r.value.segment;
+					}
+					if (!firstChar) firstChar = Array.from(name)[0] || '';
+				}
+
+				/* 判断是否 emoji：用更小的字号 */
+				var isEmoji = false;
+				try {
+					isEmoji = /\p{Extended_Pictographic}/u.test(firstChar);
+				} catch (e) {
+					isEmoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(firstChar);
+				}
+				var fontSize = isEmoji ? 130 : 200;
+				var baseY = isEmoji ? 100 : 115;
+
+				var svg =
+					"<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'>" +
+					"<text x='100' y='" + baseY + "' fill='" + tokenColor + "' " +
+					"style='dominant-baseline:middle;text-anchor:middle;font-size:" + fontSize + ";font-weight:bold;'>" +
+					firstChar + "</text></svg>";
+
+				var uri = "data:image/svg+xml," + encodeURIComponent(svg);
+				img.src = uri;
+				document.getElementById("token_img_src").value = uri;
+			}
+
+			function loadImgFile(e, img) {
+				var file = e.files[0];
+				if (file === undefined && img.id === "newTokenImg") {
+					img.src = "data:image/svg+xml,";
+					changeTokenImgSVG();
+				}
+				if (window.FileReader) {
+					var fr = new FileReader();
+					fr.readAsDataURL(file);
+					fr.onloadend = function() {
+						if (img.id === "newMapImg") {
+							img.style.backgroundImage = "url('" + fr.result + "')";
+							document.getElementById("map_img_src").value = "图片数据";
+						} else {
+							img.src = fr.result;
+							document.getElementById("token_img_src").value = "图片数据";
+						}
+					};
+				}
+			}
+
+			/* ================================================================ */
+			/* 初始化                                                           */
+			/* ================================================================ */
+			loadColorBox();
+			changeTokenImgSVG();
+			renderTerrainPalette();
+			renderTokenPresets();
+			renderMapPresets();
+			syncColorBoxSelection();
+			updateHalfGridUI();
+
+			/* 初始化地图预览背景（应用首个预设作为默认，与原来一致） */
+			(function initMapPreviewBg() {
+				// 默认平铺
+				document.getElementById('map_mode_tile').checked = true;
+				onMapModeChange(); // 会触发 renderMapPresets
+
+				var img = document.getElementById('newMapImg');
+				var firstTile = (PRESETS.map || []).filter(function(p) {
+					return (p.mode || 'tile') === 'tile';
+				})[0];
+
+				if (firstTile) {
+					applyMapPreset(firstTile);
+				} else {
+					img.style.backgroundImage = getComputedStyle(document.body).getPropertyValue('--wall-bg') || 'none';
+					img.style.backgroundSize = '4em 4em';
+				}
+
+				var box = document.getElementById('mapPresets');
+				if (box && box.firstChild) box.firstChild.classList.add('selected');
+			})();
+
+			/* ================================================================ */
+			/* 网格偏移 / 格子大小                                              */
+			/* ================================================================ */
+			function updateGridOffset(dx, dy) {
+				gridOffsetX += dx;
+				gridOffsetY += dy;
+				var line = document.getElementById('map_line');
+				var hex = document.getElementById('map_line_hexagon');
+				line.style.backgroundPosition = gridOffsetX + 'em ' + gridOffsetY + 'em';
+				hex.style.backgroundPosition = gridOffsetX + 'em ' + gridOffsetY + 'em';
+				hex.style.webkitMaskPosition = gridOffsetX + 'em ' + gridOffsetY + 'em';
+				hex.style.maskPosition = gridOffsetX + 'em ' + gridOffsetY + 'em';
+			}
+
+			function onBoxSizeChange() {
+				var fs = parseInt(document.getElementById('boxSize').value) || 40;
+				document.getElementById('map_main').style.fontSize = fs + 'px';
+				redrawTerrain();
+			}
+
+			/* ================================================================ */
+			/* 坐标转换（保持往返互逆）                                          */
+			/* ================================================================ */
+			function positionToCell(left, top, w, h, isHex) {
+				// 减去格线偏移，转到"以格线原点为基准"的坐标系
+				var lx = left - gridOffsetX;
+				var ty = top - gridOffsetY;
+				var cx = lx + w / 2;
+				var cy = ty + h / 2;
+				if (!isHex) {
+					return {
+						x: Math.round(cx - 0.5),
+						y: Math.round(cy - 0.5)
+					};
+				} else {
+					var row = Math.round((cy - HEX_CENTER_Y) / HEX_ROW_H);
+					var parity = ((row % 2) + 2) % 2;
+					var col;
+					if (parity === 0) {
+						col = Math.round(cx - 0.5);
+					} else {
+						col = Math.floor(cx - 1.0);
+					}
+					return {
+						x: col,
+						y: row
+					};
+				}
+			}
+
+			function cellToPosition(cx, cy, w, h, isHex) {
+				// 计算完再加回格线偏移，转回"世界坐标"
+				if (!isHex) {
+					return {
+						left: cx + 0.5 - w / 2 + gridOffsetX,
+						top: cy + 0.5 - h / 2 + gridOffsetY
+					};
+				} else {
+					var parity = ((cy % 2) + 2) % 2;
+					var xOffset = parity * 0.5;
+					return {
+						left: cx + 0.5 + xOffset - w / 2 + gridOffsetX,
+						top: cy * HEX_ROW_H + HEX_CENTER_Y - h / 2 + gridOffsetY
+					};
+				}
+			}
+
+			function isHalfGridEnabled() {
+				var cb = document.getElementById('halfGridToggle');
+				var isHex = document.getElementById('box_hexagon').checked;
+				return !!(cb && cb.checked && !isHex);
+			}
+
+			function onHalfGridToggle(checked) {
+				halfGridMode = checked;
+			}
+
+			function updateHalfGridUI() {
+				var cb = document.getElementById('halfGridToggle');
+				if (!cb) return;
+				var isHex = document.getElementById('box_hexagon').checked;
+				cb.disabled = isHex;
+				var row = cb.parentElement;
+				if (row) row.style.opacity = isHex ? '0.5' : '';
+			}
+
+			function snapToGrid(left, top, w, h, isHex) {
+				// 半格模式：只对方形有效
+				if (!isHex && isHalfGridEnabled()) {
+					var cx = left + w / 2;
+					var cy = top + h / 2;
+					var step = 0.5;
+					var snappedCX = Math.round(cx / step) * step;
+					var snappedCY = Math.round(cy / step) * step;
+					return {
+						left: snappedCX - w / 2,
+						top: snappedCY - h / 2,
+						cellX: snappedCX - 0.5,
+						cellY: snappedCY - 0.5
+					};
+				}
+				var cell = positionToCell(left, top, w, h, isHex);
+				var pos = cellToPosition(cell.x, cell.y, w, h, isHex);
+				return {
+					left: pos.left,
+					top: pos.top,
+					cellX: cell.x,
+					cellY: cell.y
+				};
+			}
+
+			/* ================================================================ */
+			/* 格子切换                                                         */
+			/* ================================================================ */
+			function onGridTypeChange() {
+				var newIsHex = document.getElementById('box_hexagon').checked;
+				if (currentGridIsHex === newIsHex) {
+					document.getElementById('map_line').style.display = newIsHex ? 'none' : 'block';
+					document.getElementById('map_line_hexagon').style.display = newIsHex ? 'block' : 'none';
+					return;
+				}
+
+				var tokenUser = document.getElementById('token_user');
+				for (var i = 0; i < tokenUser.children.length; i++) {
+					var el = tokenUser.children[i];
+					if (!el.id || el.id.indexOf('token_') !== 0) continue;
+					var im = el.children[0].children[0];
+					var w = parseFloat(im.style.width) || 1;
+					var h = parseFloat(im.style.height) || 1;
+					var l = parseFloat(el.style.left) || 0;
+					var t = parseFloat(el.style.top) || 0;
+					var snapped = snapToGrid(l, t, w, h, newIsHex);
+					el.style.left = snapped.left + 'em';
+					el.style.top = snapped.top + 'em';
+				}
+
+				var tokenBg = document.getElementById('token_bg');
+				for (var j = 0; j < tokenBg.children.length; j++) {
+					var mel = tokenBg.children[j];
+					if (!mel.id || mel.id.indexOf('map_') !== 0) continue;
+					var mim = mel.children[0].children[0];
+
+					// 用当前（旧格子类型下的）视觉尺寸算出中心
+					var oldW = parseFloat(mim.style.width) || 3;
+					var oldH = parseFloat(mim.style.height) || 3;
+					var ml = parseFloat(mel.style.left) || 0;
+					var mt = parseFloat(mel.style.top) || 0;
+					var centerX = ml + oldW / 2;
+					var centerY = mt + oldH / 2;
+
+					// 中心对应到哪个格
+					var cell = positionToCell(centerX, centerY, 0, 0, newIsHex);
+
+					// 应用新格子类型下的尺寸（内部会读 box_hexagon，此时已被 radio 更新）
+					applyMapRenderSize(mim);
+
+					var newW = parseFloat(mim.style.width);
+					var newH = parseFloat(mim.style.height);
+
+					// 用新尺寸贴回该格中心
+					var center = cellToPosition(cell.x, cell.y, 0, 0, newIsHex);
+					mel.style.left = (center.left - newW / 2) + 'em';
+					mel.style.top = (center.top - newH / 2) + 'em';
+				}
+
+				var newGrid = {};
+				for (var key in terrainGrid) {
+					var parts = key.split(',');
+					var cx = parseInt(parts[0], 10);
+					var cy = parseInt(parts[1], 10);
+					var oldPos = cellToPosition(cx, cy, 0, 0, currentGridIsHex);
+					var newCell = positionToCell(oldPos.left, oldPos.top, 0, 0, newIsHex);
+					newGrid[newCell.x + ',' + newCell.y] = terrainGrid[key];
+				}
+				terrainGrid = newGrid;
+
+				currentGridIsHex = newIsHex;
+				document.getElementById('map_line').style.display = newIsHex ? 'none' : 'block';
+				document.getElementById('map_line_hexagon').style.display = newIsHex ? 'block' : 'none';
+				redrawTerrain();
+				updateHalfGridUI();
+			}
+
+			/* ================================================================ */
+			/* 地图移动（同步所有层）                                           */
+			/* ================================================================ */
+			function map_move(pos) {
+				var isHex = document.getElementById("box_hexagon").checked;
+				var half = isHalfGridEnabled();
+
+				// 半格模式：方形下每步走半格
+				if (half) {
+					pos = [pos[0] * 0.5, pos[1] * 0.5];
+				}
+
+				// 六边形：按 0.866 / 0.5 换算（不受半格影响，因为 isHalfGridEnabled 在六边形下恒为 false）
+				if (isHex && pos[1] !== 0) {
+					pos[0] = pos[1] * 0.5;
+					pos[1] = pos[1] * 1.73 / 2;
+				}
+
+				var token_user = document.getElementById("token_user");
+				var token_bg = document.getElementById("token_bg");
+				var terrain_layer = document.getElementById('terrain_layer');
+
+				for (var i = 0; i < token_user.children.length; i++) {
+					token_user.children[i].style.left = parseFloat(token_user.children[i].style.left) + pos[0] + "em";
+					token_user.children[i].style.top = parseFloat(token_user.children[i].style.top) + pos[1] + "em";
+				}
+				for (var i = 0; i < token_bg.children.length; i++) {
+					token_bg.children[i].style.left = parseFloat(token_bg.children[i].style.left) + pos[0] + "em";
+					token_bg.children[i].style.top = parseFloat(token_bg.children[i].style.top) + pos[1] + "em";
+				}
+				if (terrain_layer) {
+					var tl = parseFloat(terrain_layer.style.left) || 0;
+					var tt = parseFloat(terrain_layer.style.top) || 0;
+					terrain_layer.style.left = (tl + pos[0]) + "em";
+					terrain_layer.style.top = (tt + pos[1]) + "em";
+				}
+
+				updateGridOffset(pos[0], pos[1]);
+			}
+
+			document.addEventListener('keydown', function(e) {
+				if (document.querySelector('.modal.show')) return;
+				var t = e.target;
+				if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+				switch (e.key) {
+					case 'ArrowUp':
+						map_move([0, -1]);
+						e.preventDefault();
+						break;
+					case 'ArrowDown':
+						map_move([0, 1]);
+						e.preventDefault();
+						break;
+					case 'ArrowLeft':
+						map_move([-1, 0]);
+						e.preventDefault();
+						break;
+					case 'ArrowRight':
+						map_move([1, 0]);
+						e.preventDefault();
+						break;
+				}
+			});
+
+			/* ================================================================ */
+			/* 血条                                                            */
+			/* ================================================================ */
+			function toggleHpVisibility() {
+				var always = document.getElementById('hpAlwaysShow').checked;
+				var hps = document.querySelectorAll('.token-hp');
+				for (var i = 0; i < hps.length; i++) {
+					if (always) hps[i].classList.remove('token-hp--hover');
+					else hps[i].classList.add('token-hp--hover');
+				}
+			}
+
+			function createHpBar(hpMax, hpCurrent) {
+				var wrap = document.createElement('div');
+				wrap.className = 'token-hp';
+				var fill = document.createElement('div');
+				fill.className = 'token-hp-fill';
+				fill.style.width = (hpCurrent / hpMax * 100) + '%';
+				if (hpCurrent / hpMax <= 0.25) wrap.classList.add('low');
+				wrap.appendChild(fill);
+				if (!document.getElementById('hpAlwaysShow').checked) wrap.classList.add('token-hp--hover');
+				return wrap;
+			}
+
+			function updateHpBar(hpEl, hpMax, hpCurrent) {
+				hpEl.setAttribute('hp_max', hpMax);
+				var fill = hpEl.querySelector('.token-hp-fill');
+				if (fill) fill.style.width = (hpCurrent / hpMax * 100) + '%';
+				hpEl.classList.toggle('low', hpCurrent / hpMax <= 0.25);
+			}
+
+			/* ================================================================ */
+			/* 残影 / 路径                                                     */
+			/* ================================================================ */
+			function createGhost(tokenDiv) {
+				var ghost = document.createElement('div');
+				ghost.className = 'token-ghost';
+				ghost.style.left = tokenDiv.style.left;
+				ghost.style.top = tokenDiv.style.top;
+				var srcImg = tokenDiv.children[0].children[0];
+				var img = document.createElement('img');
+				img.src = srcImg.src;
+				img.style.width = srcImg.style.width;
+				img.style.height = srcImg.style.height;
+				ghost.appendChild(img);
+				document.getElementById('token_user').appendChild(ghost);
+				return ghost;
+			}
+
+			function removeGhost() {
+				if (ghostEl) {
+					ghostEl.remove();
+					ghostEl = null;
+				}
+			}
+
+			function drawMovePath(fromEmX, fromEmY, toEmX, toEmY, w, h) {
+				var fs = parseFloat(getComputedStyle(document.getElementById('map_main')).fontSize);
+				var fromX = (fromEmX + w / 2) * fs;
+				var fromY = (fromEmY + h / 2) * fs;
+				var toX = (toEmX + w / 2) * fs;
+				var toY = (toEmY + h / 2) * fs;
+				if (!movePathLine) {
+					movePathLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+					movePathSvg.appendChild(movePathLine);
+				}
+				movePathLine.setAttribute('d', 'M ' + fromX + ' ' + fromY + ' L ' + toX + ' ' + toY);
+			}
+
+			function clearMovePath() {
+				if (movePathLine) {
+					movePathLine.remove();
+					movePathLine = null;
+				}
+			}
+
+			/* ================================================================ */
+			/* 角色拖拽                                                        */
+			/* ================================================================ */
+			function tokenDragHandler(event) {
+				if (drawMode) return;
+				if (event.button !== 0) return;
+				if (this.dataset.locked === '1') return;
+				if (onMouse) return;
+				startTokenDrag(this, event);
+				event.stopPropagation();
+				event.preventDefault();
+			}
+
+			function startTokenDrag(tokenDiv, event) {
+				if (drawMode || onMouse) return;
+				onMouse = tokenDiv;
+				dragStartX = event.clientX;
+				dragStartY = event.clientY;
+				dragStartEmX = parseFloat(tokenDiv.style.left) || 0;
+				dragStartEmY = parseFloat(tokenDiv.style.top) || 0;
+				dragIsHex = document.getElementById('box_hexagon').checked;
+
+				var img = tokenDiv.children[0].children[0];
+				var w = parseFloat(img.style.width) || 1;
+				var h = parseFloat(img.style.height) || 1;
+
+				ghostEl = createGhost(tokenDiv);
+				drawMovePath(dragStartEmX, dragStartEmY, dragStartEmX, dragStartEmY, w, h);
+
+				try {
+					tokenDiv.setPointerCapture(event.pointerId);
+				} catch (err) {}
+				tokenDiv.addEventListener('pointermove', onTokenDragMove);
+				tokenDiv.addEventListener('pointerup', endTokenDrag);
+				tokenDiv.addEventListener('pointercancel', endTokenDrag);
+			}
+
+			function onTokenDragMove(event) {
+				if (!onMouse) return;
+				var boxSize = parseInt(document.getElementById('boxSize').value) || 40;
+				var dxEm = (event.clientX - dragStartX) / boxSize;
+				var dyEm = (event.clientY - dragStartY) / boxSize;
+
+				var img = onMouse.children[0].children[0];
+				var w = parseFloat(img.style.width) || 1;
+				var h = parseFloat(img.style.height) || 1;
+
+				var snapped = snapToGrid(dragStartEmX + dxEm, dragStartEmY + dyEm, w, h, dragIsHex);
+				onMouse.style.left = snapped.left + 'em';
+				onMouse.style.top = snapped.top + 'em';
+
+				drawMovePath(dragStartEmX, dragStartEmY, snapped.left, snapped.top, w, h);
+			}
+
+			function endTokenDrag(event) {
+				if (!onMouse) return;
+				var el = onMouse;
+				if (event && el.hasPointerCapture && el.hasPointerCapture(event.pointerId)) {
+					el.releasePointerCapture(event.pointerId);
+				}
+				el.removeEventListener('pointermove', onTokenDragMove);
+				el.removeEventListener('pointerup', endTokenDrag);
+				el.removeEventListener('pointercancel', endTokenDrag);
+				onMouse = null;
+				removeGhost();
+				clearMovePath();
+			}
+
+			/* ================================================================ */
+			/* 通用构建                                                         */
+			/* ================================================================ */
+			function buildTokenDom(opts) {
+				var div = document.createElement('div');
+				div.id = 'token_' + opts.id;
+				div.className = 'position-absolute token_user-item';
+				div.dataset.locked = opts.locked ? '1' : '';
+				div.style.left = opts.left + 'em';
+				div.style.top = opts.top + 'em';
+
+				var wrap = document.createElement('div');
+				wrap.className = 'overflow-hidden rounded-sm';
+				div.appendChild(wrap);
+
+				var img = document.createElement('img');
+				img.src = opts.imgSrc;
+				img.alt = opts.imgAlt;
+				img.title = opts.imgAlt + '\n点击移动';
+				img.className = 'd-block';
+				img.style.width = opts.w + 'em';
+				img.style.height = opts.h + 'em';
+				wrap.appendChild(img);
+
+				var hpEl = createHpBar(opts.hpMax, opts.hpCur);
+				hpEl.style.display = opts.hpShow ? '' : 'none';
+				div.appendChild(hpEl);
+
+				div.addEventListener('pointerdown', tokenDragHandler);
+				return div;
+			}
+
+			function buildTokenListRows(opts) {
+				var list = document.getElementById('set_userList');
+				var el = document.getElementById('token_' + opts.id);
+				if (!el) return;
+
+				var row = document.createElement('div');
+				row.className = 'layer-row';
+				row.dataset.id = opts.id;
+				if (el.style.display === 'none') row.classList.add('layer-hidden');
+				row.draggable = true;
+
+				var hidden = el.style.display === 'none';
+				var eye = document.createElement('button');
+				eye.className = 'layer-btn' + (hidden ? '' : ' active');
+				eye.title = '显示/隐藏';
+				eye.innerHTML = '<svg class="layer-icon"><use href="#i-' + (hidden ? 'eye-off' : 'eye') + '"/></svg>';
+				eye.onclick = function(e) {
+					e.stopPropagation();
+					var isHidden = el.style.display === 'none';
+					if (isHidden) {
+						el.style.display = '';
+						eye.classList.add('active');
+						eye.innerHTML = '<svg class="layer-icon"><use href="#i-eye"/></svg>';
+						row.classList.remove('layer-hidden');
+					} else {
+						el.style.display = 'none';
+						eye.classList.remove('active');
+						eye.innerHTML = '<svg class="layer-icon"><use href="#i-eye-off"/></svg>';
+						row.classList.add('layer-hidden');
+					}
+				};
+				row.appendChild(eye);
+
+				var thumb = document.createElement('div');
+				thumb.className = 'layer-thumb';
+				thumb.style.backgroundImage = 'url("' + opts.imgSrc + '")';
+				row.appendChild(thumb);
+
+				var info = document.createElement('div');
+				info.className = 'layer-info';
+				var name = document.createElement('div');
+				name.className = 'layer-name';
+				name.textContent = opts.imgAlt || '角色';
+				info.appendChild(name);
+
+				var sub = document.createElement('div');
+				sub.className = 'layer-sub';
+				var hpInput = document.createElement('input');
+				hpInput.type = 'number';
+				hpInput.className = 'layer-hp-input';
+				hpInput.min = '0';
+				hpInput.max = opts.hpMax;
+				hpInput.value = opts.hpCur;
+				hpInput.onclick = function(e) {
+					e.stopPropagation();
+				};
+				hpInput.onchange = function() {
+					var token = document.getElementById('token_' + opts.id);
+					var hp = token.querySelector('.token-hp');
+					if (hp) {
+						var fill = hp.querySelector('.token-hp-fill');
+						fill.style.width = (this.value / this.max * 100) + '%';
+						hp.classList.toggle('low', this.value / this.max <= 0.25);
+					}
+				};
+				sub.appendChild(hpInput);
+				var slash = document.createElement('span');
+				slash.textContent = '/' + opts.hpMax;
+				sub.appendChild(slash);
+				info.appendChild(sub);
+				row.appendChild(info);
+
+				var locked = el.dataset.locked === '1';
+				var lockBtn = document.createElement('button');
+				lockBtn.className = 'layer-btn' + (locked ? ' active' : '');
+				lockBtn.title = '锁定';
+				lockBtn.innerHTML = '<svg class="layer-icon"><use href="#i-' + (locked ? 'lock' : 'unlock') + '"/></svg>';
+				lockBtn.onclick = function(e) {
+					e.stopPropagation();
+					var isLocked = el.dataset.locked === '1';
+					if (isLocked) {
+						el.dataset.locked = '';
+						lockBtn.classList.remove('active');
+						lockBtn.innerHTML = '<svg class="layer-icon"><use href="#i-unlock"/></svg>';
+					} else {
+						el.dataset.locked = '1';
+						lockBtn.classList.add('active');
+						lockBtn.innerHTML = '<svg class="layer-icon"><use href="#i-lock"/></svg>';
+					}
+				};
+				row.appendChild(lockBtn);
+
+				var actions = document.createElement('div');
+				actions.className = 'layer-actions';
+
+				var upBtn = document.createElement('button');
+				upBtn.className = 'layer-btn';
+				upBtn.title = '上移';
+				upBtn.innerHTML = '<svg class="layer-icon"><use href="#i-up"/></svg>';
+				upBtn.onclick = function(e) {
+					e.stopPropagation();
+					moveUserOrder(opts.id, -1);
+				};
+				actions.appendChild(upBtn);
+
+				var downBtn = document.createElement('button');
+				downBtn.className = 'layer-btn';
+				downBtn.title = '下移';
+				downBtn.innerHTML = '<svg class="layer-icon"><use href="#i-down"/></svg>';
+				downBtn.onclick = function(e) {
+					e.stopPropagation();
+					moveUserOrder(opts.id, 1);
+				};
+				actions.appendChild(downBtn);
+
+				var editBtn = document.createElement('button');
+				editBtn.className = 'layer-btn';
+				editBtn.title = '编辑';
+				editBtn.innerHTML = '<svg class="layer-icon"><use href="#i-edit"/></svg>';
+				editBtn.onclick = function(e) {
+					e.stopPropagation();
+					document.getElementById('bt_changeToken').setAttribute('for_id', opts.id);
+					openTokenEditor(opts.id);
+				};
+				actions.appendChild(editBtn);
+
+				var delBtn = document.createElement('button');
+				delBtn.className = 'layer-btn';
+				delBtn.title = '删除';
+				delBtn.innerHTML = '<svg class="layer-icon"><use href="#i-trash"/></svg>';
+				delBtn.onclick = function(e) {
+					e.stopPropagation();
+					if (!confirm('确定删除？')) return;
+					el.remove();
+					for (var i = 0; i < save_userList.length; i++) {
+						if (save_userList[i].id === opts.id) {
+							save_userList.splice(i, 1);
+							break;
+						}
+					}
+					row.remove();
+				};
+				actions.appendChild(delBtn);
+				row.appendChild(actions);
+
+				makeLayerDraggable(row, save_userList, function() {
+					rebuildUserList();
+					rebuildUserLayers();
+				});
+
+				list.appendChild(row);
+			}
+
+			function applyMapRenderSize(im) {
+				// 兼容旧数据：首次调用时把当前视觉值作为"原始值"记下来
+				if (!im.dataset.origW) im.dataset.origW = parseFloat(im.style.width) || 3;
+				if (!im.dataset.origH) im.dataset.origH = parseFloat(im.style.height) || 3;
+				if (!im.dataset.origBgSize) im.dataset.origBgSize = im.style.backgroundSize || '3em 3em';
+
+				var isHex = document.getElementById('box_hexagon').checked;
+				var origW = parseFloat(im.dataset.origW) || 3;
+				var origH = parseFloat(im.dataset.origH) || 3;
+				var origBg = im.dataset.origBgSize;
+
+				var renderW = origW;
+				var renderH = origH;
+				var renderBg = origBg;
+
+				if (isHex) {
+					renderH = origH * 1.1547; // 六边形格子视觉高度
+					var parts = origBg.split(' ');
+					if (parts.length === 2) {
+						var bx = parseFloat(parts[0]);
+						var by = parseFloat(parts[1]);
+						if (!isNaN(bx) && !isNaN(by)) {
+							renderBg = bx + 'em ' + (by * 1.1547) + 'em';
+						}
+					}
+				}
+
+				im.style.width = renderW + 'em';
+				im.style.height = renderH + 'em';
+				im.style.backgroundSize = renderBg;
+			}
+
+			function toggleMapDragMode(checked) {
+				// 开启地图拖拽 → 先关闭绘制
+				if (checked && drawMode) {
+					drawMode = false;
+					document.getElementById('drawModeToggle').checked = false;
+					var layer = document.getElementById('terrain_layer');
+					var tokenUser = document.getElementById('token_user');
+					var tokenBg = document.getElementById('token_bg');
+					layer.classList.remove('painting');
+					tokenUser.style.pointerEvents = '';
+					tokenBg.style.pointerEvents = '';
+				}
+
+				mapDragMode = checked;
+				document.querySelectorAll('#token_bg > .map-elem').forEach(function(el) {
+					var locked = el.dataset.locked === '1';
+					el.classList.toggle('map-draggable', checked && !locked);
+				});
+				if (!checked) {
+					if (mapDrag) finishMapDrag(null);
+					hideSelection();
+				}
+			}
+
+			function onMapDragStart(e) {
+				if (!mapDragMode) return;
+				if (e.button !== 0) return;
+				if (drawMode) return;
+				if (this.dataset.locked === '1') return;
+				if (mapDrag) return;
+
+				var el = this;
+				showSelection(el); // ← 点击即选中
+
+				var fs = parseFloat(getComputedStyle(document.getElementById('map_main')).fontSize);
+				mapDrag = {
+					el: el,
+					startX: e.clientX,
+					startY: e.clientY,
+					startLeftEm: parseFloat(el.style.left) || 0,
+					startTopEm: parseFloat(el.style.top) || 0,
+					fs: fs
+				};
+				el.classList.add('map-dragging');
+				try {
+					el.setPointerCapture(e.pointerId);
+				} catch (err) {}
+				el.addEventListener('pointermove', onMapDragMove);
+				el.addEventListener('pointerup', finishMapDrag);
+				el.addEventListener('pointercancel', finishMapDrag);
+				e.stopPropagation();
+				e.preventDefault();
+			}
+
+			function onMapDragMove(e) {
+				if (!mapDrag) return;
+				var fs = mapDrag.fs;
+				mapDrag.el.style.left = (mapDrag.startLeftEm + (e.clientX - mapDrag.startX) / fs) + 'em';
+				mapDrag.el.style.top = (mapDrag.startTopEm + (e.clientY - mapDrag.startY) / fs) + 'em';
+				if (currentSelectedElement === mapDrag.el) showSelection(mapDrag.el);
+			}
+
+			function finishMapDrag(e) {
+				if (!mapDrag) return;
+				var el = mapDrag.el;
+				var im = el.children[0].children[0];
+
+				// 判断是点击还是拖拽
+				var dist = 0;
+				if (e) {
+					var dx = e.clientX - mapDrag.startX;
+					var dy = e.clientY - mapDrag.startY;
+					dist = Math.sqrt(dx * dx + dy * dy);
+				}
+
+				el.classList.remove('map-dragging');
+				el.removeEventListener('pointermove', onMapDragMove);
+				el.removeEventListener('pointerup', finishMapDrag);
+				el.removeEventListener('pointercancel', finishMapDrag);
+				if (e && el.hasPointerCapture && el.hasPointerCapture(e.pointerId)) {
+					el.releasePointerCapture(e.pointerId);
+				}
+				mapDrag = null;
+
+				// 点击（移动距离很小）→ 只选中，不吸附、不改位置
+				if (dist < 3) {
+					showSelection(el);
+					return;
+				}
+
+				// 拖拽 → 吸附（半格模式下方形按 0.5 格）
+				var w = parseFloat(im.style.width) || 3;
+				var h = parseFloat(im.style.height) || 3;
+				var left = parseFloat(el.style.left) || 0;
+				var top = parseFloat(el.style.top) || 0;
+				var isHex = document.getElementById('box_hexagon').checked;
+
+				var snapped = snapToGrid(left, top, w, h, isHex);
+				el.style.left = snapped.left + 'em';
+				el.style.top = snapped.top + 'em';
+
+				showSelection(el);
+			}
+
+			function buildMapDom(opts) {
+				var div = document.createElement('div');
+				div.id = 'map_' + opts.id;
+				div.className = 'position-absolute map-elem' +
+					(mapDragMode ? ' map-draggable' : '') +
+					(opts.locked ? ' map-locked' : '');
+				div.dataset.locked = opts.locked ? '1' : '';
+				div.dataset.rotation = opts.rotation || 0;
+				div.style.left = opts.left + 'em';
+				div.style.top = opts.top + 'em';
+				if (opts.visible === false) div.style.display = 'none';
+
+				var inner = document.createElement('div');
+				div.appendChild(inner);
+
+				var im = document.createElement('div');
+				im.className = 'd-block';
+				im.style.backgroundImage = opts.bgImg;
+				if (opts.bgRepeat) im.style.backgroundRepeat = opts.bgRepeat;
+				if (opts.bgPos) im.style.backgroundPosition = opts.bgPos;
+				im.alt = 'map_' + opts.id;
+				im.title = im.alt;
+
+				im.dataset.origW = opts.w || 3;
+				im.dataset.origH = opts.h || 3;
+				im.dataset.origBgSize = opts.bgSize || '3em 3em';
+				applyMapRenderSize(im);
+
+				var rot = parseFloat(opts.rotation) || 0;
+				if (rot) im.style.transform = 'rotate(' + rot + 'deg)';
+
+				inner.appendChild(im);
+				div.addEventListener('pointerdown', onMapDragStart);
+				return div;
+			}
+
+			function buildMapListRows(opts) {
+				var list = document.getElementById('set_mapList');
+				var el = document.getElementById('map_' + opts.id);
+				if (!el) return;
+				var im = el.children[0].children[0];
+
+				var row = document.createElement('div');
+				row.className = 'layer-row';
+				row.dataset.id = opts.id;
+				if (el.style.display === 'none') row.classList.add('layer-hidden');
+				row.draggable = true;
+
+				var hidden = el.style.display === 'none';
+				var eye = document.createElement('button');
+				eye.className = 'layer-btn' + (hidden ? '' : ' active');
+				eye.title = '显示/隐藏';
+				eye.innerHTML = '<svg class="layer-icon"><use href="#i-' + (hidden ? 'eye-off' : 'eye') + '"/></svg>';
+				eye.onclick = function(e) {
+					e.stopPropagation();
+					var isHidden = el.style.display === 'none';
+					if (isHidden) {
+						el.style.display = '';
+						eye.classList.add('active');
+						eye.innerHTML = '<svg class="layer-icon"><use href="#i-eye"/></svg>';
+						row.classList.remove('layer-hidden');
+					} else {
+						el.style.display = 'none';
+						eye.classList.remove('active');
+						eye.innerHTML = '<svg class="layer-icon"><use href="#i-eye-off"/></svg>';
+						row.classList.add('layer-hidden');
+					}
+				};
+				row.appendChild(eye);
+
+				var thumb = document.createElement('div');
+				thumb.className = 'layer-thumb';
+				thumb.style.backgroundImage = im.style.backgroundImage;
+				row.appendChild(thumb);
+
+				var info = document.createElement('div');
+				info.className = 'layer-info';
+				var name = document.createElement('div');
+				name.className = 'layer-name';
+				name.textContent = 'map_' + opts.id;
+				info.appendChild(name);
+				row.appendChild(info);
+
+				var locked = el.dataset.locked === '1';
+				var lockBtn = document.createElement('button');
+				lockBtn.className = 'layer-btn' + (locked ? ' active' : '');
+				lockBtn.title = '锁定';
+				lockBtn.innerHTML = '<svg class="layer-icon"><use href="#i-' + (locked ? 'lock' : 'unlock') + '"/></svg>';
+				lockBtn.onclick = function(e) {
+					e.stopPropagation();
+					var isLocked = el.dataset.locked === '1';
+					if (isLocked) {
+						el.dataset.locked = '';
+						el.classList.remove('map-locked');
+						if (mapDragMode) el.classList.add('map-draggable');
+						lockBtn.classList.remove('active');
+						lockBtn.innerHTML = '<svg class="layer-icon"><use href="#i-unlock"/></svg>';
+					} else {
+						el.dataset.locked = '1';
+						el.classList.add('map-locked');
+						el.classList.remove('map-draggable');
+						lockBtn.classList.add('active');
+						lockBtn.innerHTML = '<svg class="layer-icon"><use href="#i-lock"/></svg>';
+						if (currentSelectedElement === el) hideSelection();
+					}
+				};
+				row.appendChild(lockBtn);
+
+				var actions = document.createElement('div');
+				actions.className = 'layer-actions';
+
+				var upBtn = document.createElement('button');
+				upBtn.className = 'layer-btn';
+				upBtn.title = '上移';
+				upBtn.innerHTML = '<svg class="layer-icon"><use href="#i-up"/></svg>';
+				upBtn.onclick = function(e) {
+					e.stopPropagation();
+					moveMapOrder(opts.id, -1);
+				};
+				actions.appendChild(upBtn);
+
+				var downBtn = document.createElement('button');
+				downBtn.className = 'layer-btn';
+				downBtn.title = '下移';
+				downBtn.innerHTML = '<svg class="layer-icon"><use href="#i-down"/></svg>';
+				downBtn.onclick = function(e) {
+					e.stopPropagation();
+					moveMapOrder(opts.id, 1);
+				};
+				actions.appendChild(downBtn);
+
+				var editBtn = document.createElement('button');
+				editBtn.className = 'layer-btn';
+				editBtn.title = '编辑';
+				editBtn.innerHTML = '<svg class="layer-icon"><use href="#i-edit"/></svg>';
+				editBtn.onclick = function(e) {
+					e.stopPropagation();
+					document.getElementById('bt_changeMap').setAttribute('for_id', opts.id);
+					openMapEditor(opts.id);
+				};
+				actions.appendChild(editBtn);
+
+				var delBtn = document.createElement('button');
+				delBtn.className = 'layer-btn';
+				delBtn.title = '删除';
+				delBtn.innerHTML = '<svg class="layer-icon"><use href="#i-trash"/></svg>';
+				delBtn.onclick = function(e) {
+					e.stopPropagation();
+					if (!confirm('确定删除？')) return;
+					el.remove();
+					for (var i = 0; i < save_mapList.length; i++) {
+						if (save_mapList[i].id === opts.id) {
+							save_mapList.splice(i, 1);
+							break;
+						}
+					}
+					if (currentSelectedElement === el) hideSelection();
+					row.remove();
+				};
+				actions.appendChild(delBtn);
+				row.appendChild(actions);
+
+				row.addEventListener('click', function() {
+					if (mapDragMode && el.dataset.locked !== '1') showSelection(el);
+				});
+				makeLayerDraggable(row, save_mapList, function() {
+					rebuildMapList();
+					rebuildMapLayers();
+				});
+
+				list.appendChild(row);
+			}
+
+			function rebuildMapList() {
+				var tbody = document.getElementById('set_mapList');
+				tbody.innerHTML = '';
+				save_mapList.forEach(function(m) {
+					var el = document.getElementById('map_' + m.id);
+					if (!el) return;
+					var im = el.children[0].children[0];
+					buildMapListRows({
+						id: m.id,
+						bgImg: im.style.backgroundImage,
+						visible: el.style.display !== 'none'
+					});
+				});
+				if (currentSelectedElement) highlightMapLayer(currentSelectedElement.id);
+			}
+
+			function rebuildMapLayers() {
+				var tokenBg = document.getElementById('token_bg');
+				for (var i = save_mapList.length - 1; i >= 0; i--) {
+					var el = document.getElementById('map_' + save_mapList[i].id);
+					if (el) tokenBg.appendChild(el);
+				}
+			}
+
+			function moveMapOrder(id, dir) {
+				var idx = -1;
+				for (var i = 0; i < save_mapList.length; i++) {
+					if (save_mapList[i].id == id) {
+						idx = i;
+						break;
+					}
+				}
+				if (idx < 0) return;
+				var newIdx = idx + dir;
+				if (newIdx < 0 || newIdx >= save_mapList.length) return;
+
+				var tmp = save_mapList[idx];
+				save_mapList[idx] = save_mapList[newIdx];
+				save_mapList[newIdx] = tmp;
+
+				rebuildMapList();
+				rebuildMapLayers();
+			}
+			/* ---------- 图层排序辅助 ---------- */
+			function moveUserOrder(id, dir) {
+				var idx = -1;
+				for (var i = 0; i < save_userList.length; i++) {
+					if (save_userList[i].id == id) {
+						idx = i;
+						break;
+					}
+				}
+				if (idx < 0) return;
+				var newIdx = idx + dir;
+				if (newIdx < 0 || newIdx >= save_userList.length) return;
+				var tmp = save_userList[idx];
+				save_userList[idx] = save_userList[newIdx];
+				save_userList[newIdx] = tmp;
+				rebuildUserList();
+				rebuildUserLayers();
+			}
+
+			function rebuildUserLayers() {
+				var container = document.getElementById('token_user');
+				for (var i = save_userList.length - 1; i >= 0; i--) {
+					var el = document.getElementById('token_' + save_userList[i].id);
+					if (el) container.appendChild(el);
+				}
+			}
+
+			/* ---------- 图层拖拽排序 ---------- */
+			var _layerDragId = null;
+
+			function makeLayerDraggable(row, arr, rebuildFn) {
+				row.addEventListener('dragstart', function(e) {
+					_layerDragId = row.dataset.id;
+					e.dataTransfer.effectAllowed = 'move';
+					e.dataTransfer.setData('text/plain', _layerDragId);
+					row.classList.add('layer-dragging');
+				});
+				row.addEventListener('dragover', function(e) {
+					if (!_layerDragId || _layerDragId === row.dataset.id) return;
+					e.preventDefault();
+					e.dataTransfer.dropEffect = 'move';
+					var rect = row.getBoundingClientRect();
+					var isAfter = e.clientY > rect.top + rect.height / 2;
+					row.classList.remove('layer-drop-before', 'layer-drop-after');
+					row.classList.add(isAfter ? 'layer-drop-after' : 'layer-drop-before');
+				});
+				row.addEventListener('dragleave', function() {
+					row.classList.remove('layer-drop-before', 'layer-drop-after');
+				});
+				row.addEventListener('drop', function(e) {
+					e.preventDefault();
+					var isAfter = row.classList.contains('layer-drop-after');
+					row.classList.remove('layer-drop-before', 'layer-drop-after');
+					if (!_layerDragId || _layerDragId === row.dataset.id) return;
+
+					var fromIdx = -1,
+						toIdx = -1;
+					for (var i = 0; i < arr.length; i++) {
+						if (arr[i].id == _layerDragId) fromIdx = i;
+						if (arr[i].id == row.dataset.id) toIdx = i;
+					}
+					if (fromIdx < 0 || toIdx < 0) return;
+					var item = arr.splice(fromIdx, 1)[0];
+					if (fromIdx < toIdx) toIdx--;
+					if (isAfter) toIdx++;
+					arr.splice(toIdx, 0, item);
+					rebuildFn();
+				});
+				row.addEventListener('dragend', function() {
+					row.classList.remove('layer-dragging');
+					document.querySelectorAll('.layer-row').forEach(function(r) {
+						r.classList.remove('layer-drop-before', 'layer-drop-after');
+					});
+					_layerDragId = null;
+				});
+			}
+
+			/* ---------- 选中框 ---------- */
+			var currentSelectedElement = null;
+			var currentHandleDrag = null;
+			var currentRotateDrag = null;
+
+			function showSelection(el) {
+				if (!el) return hideSelection();
+				if (el.dataset.locked === '1') return hideSelection();
+				if (el.style.display === 'none') return hideSelection();
+
+				var box = document.getElementById('map_selection_box');
+				var im = el.children[0].children[0];
+
+				box.style.left = el.style.left;
+				box.style.top = el.style.top;
+				box.style.width = im.style.width;
+				box.style.height = im.style.height;
+
+				var rot = parseFloat(el.dataset.rotation) || 0;
+				box.style.transform = rot ? 'rotate(' + rot + 'deg)' : '';
+				box.classList.add('visible');
+				currentSelectedElement = el;
+				highlightMapLayer(el.id);
+			}
+
+			function hideSelection() {
+				var box = document.getElementById('map_selection_box');
+				box.classList.remove('visible');
+				currentSelectedElement = null;
+				highlightMapLayer(null);
+			}
+
+			function highlightMapLayer(elId) {
+				document.querySelectorAll('#set_mapList .layer-row').forEach(function(r) {
+					r.classList.remove('layer-selected');
+				});
+				if (!elId || elId.indexOf('map_') !== 0) return;
+				var row = document.querySelector('#set_mapList .layer-row[data-id="' + elId.replace('map_', '') + '"]');
+				if (row) row.classList.add('layer-selected');
+			}
+
+			document.addEventListener('pointerdown', function(e) {
+				if (!mapDragMode || drawMode) return;
+				if (mapDrag || currentHandleDrag || currentRotateDrag) return;
+				// 点在选中框内部（含锚点、旋转柄）→ 交给对应逻辑
+				if (e.target.closest && e.target.closest('#map_selection_box')) return;
+				// 点在某个地图元素上 → onMapDragStart 里会 showSelection
+				if (e.target.closest && e.target.closest('.map-elem')) return;
+				// 其他任何位置 → 取消选中
+				hideSelection();
+			}, true);
+
+			/* ---------- 锚点 / 旋转拖拽 ---------- */
+			(function initSelectionBox() {
+				var box = document.getElementById('map_selection_box');
+				box.querySelectorAll('.sel-handle').forEach(function(h) {
+					h.addEventListener('pointerdown', function(e) {
+						if (!currentSelectedElement || e.button !== 0) return;
+						e.stopPropagation();
+						e.preventDefault();
+						if (h.dataset.handle === 'rotate') startRotateDrag(e);
+						else startHandleDrag(e, h.dataset.handle);
+					});
+				});
+			})();
+
+			function startHandleDrag(e, handle) {
+				var el = currentSelectedElement;
+				if (!el) return;
+				var im = el.children[0].children[0];
+				var fs = parseFloat(getComputedStyle(document.getElementById('map_main')).fontSize);
+				var rot = parseFloat(el.dataset.rotation) || 0;
+				var rad = rot * Math.PI / 180;
+
+				currentHandleDrag = {
+					el: el,
+					handle: handle,
+					startW: parseFloat(im.style.width),
+					startH: parseFloat(im.style.height),
+					startLeft: parseFloat(el.style.left),
+					startTop: parseFloat(el.style.top),
+					startX: e.clientX,
+					startY: e.clientY,
+					fs: fs,
+					cos: Math.cos(rad),
+					sin: Math.sin(rad)
+				};
+				document.addEventListener('pointermove', onHandleDragMove);
+				document.addEventListener('pointerup', onHandleDragEnd);
+			}
+
+			function onHandleDragMove(e) {
+				if (!currentHandleDrag) return;
+				var d = currentHandleDrag;
+				var dxPx = e.clientX - d.startX;
+				var dyPx = e.clientY - d.startY;
+				var ldx = (dxPx * d.cos + dyPx * d.sin) / d.fs;
+				var ldy = (-dxPx * d.sin + dyPx * d.cos) / d.fs;
+
+				var dw = 0,
+					dh = 0;
+				if (d.handle === 'se') {
+					dw = 2 * ldx;
+					dh = 2 * ldy;
+				} else if (d.handle === 'nw') {
+					dw = -2 * ldx;
+					dh = -2 * ldy;
+				} else if (d.handle === 'ne') {
+					dw = 2 * ldx;
+					dh = -2 * ldy;
+				} else if (d.handle === 'sw') {
+					dw = -2 * ldx;
+					dh = 2 * ldy;
+				}
+
+				var newW = Math.max(0.5, d.startW + dw);
+				var newH = Math.max(0.5, d.startH + dh);
+
+				var im = d.el.children[0].children[0];
+				var isHex = document.getElementById('box_hexagon').checked;
+
+				// 反推原始尺寸并量化到 0.5 格
+				var origW = newW;
+				var origH = isHex ? newH / 1.1547 : newH;
+				origW = Math.max(0.5, Math.round(origW * 2) / 2);
+				origH = Math.max(0.5, Math.round(origH * 2) / 2);
+				im.dataset.origW = origW;
+				im.dataset.origH = origH;
+				applyMapRenderSize(im);
+
+				// 中心不动
+				var cx = d.startLeft + d.startW / 2;
+				var cy = d.startTop + d.startH / 2;
+				var nw = parseFloat(im.style.width);
+				var nh = parseFloat(im.style.height);
+				d.el.style.left = (cx - nw / 2) + 'em';
+				d.el.style.top = (cy - nh / 2) + 'em';
+				showSelection(d.el);
+			}
+
+			function onHandleDragEnd() {
+				currentHandleDrag = null;
+				document.removeEventListener('pointermove', onHandleDragMove);
+				document.removeEventListener('pointerup', onHandleDragEnd);
+				rebuildMapList();
+				if (currentSelectedElement) highlightMapLayer(currentSelectedElement.id);
+			}
+
+			function startRotateDrag(e) {
+				var el = currentSelectedElement;
+				if (!el) return;
+				var im = el.children[0].children[0];
+				var fs = parseFloat(getComputedStyle(document.getElementById('map_main')).fontSize);
+				var rect = document.getElementById('map_main').getBoundingClientRect();
+				var left = parseFloat(el.style.left);
+				var top = parseFloat(el.style.top);
+				var w = parseFloat(im.style.width);
+				var h = parseFloat(im.style.height);
+
+				currentRotateDrag = {
+					el: el,
+					cxScreen: rect.left + (left + w / 2) * fs,
+					cyScreen: rect.top + (top + h / 2) * fs,
+					startAngle: Math.atan2(e.clientY - (rect.top + (top + h / 2) * fs), e.clientX - (rect.left + (left + w /
+						2) * fs)) * 180 / Math.PI,
+					startRot: parseFloat(el.dataset.rotation) || 0
+				};
+				document.addEventListener('pointermove', onRotateDragMove);
+				document.addEventListener('pointerup', onRotateDragEnd);
+			}
+
+			function onRotateDragMove(e) {
+				if (!currentRotateDrag) return;
+				var d = currentRotateDrag;
+				var angle = Math.atan2(e.clientY - d.cyScreen, e.clientX - d.cxScreen) * 180 / Math.PI;
+				var newRot = d.startRot + (angle - d.startAngle);
+
+				// 默认吸附到 15° 的倍数
+				newRot = Math.round(newRot / 15) * 15;
+
+				d.el.dataset.rotation = newRot;
+				d.el.children[0].children[0].style.transform = 'rotate(' + newRot + 'deg)';
+				showSelection(d.el);
+			}
+
+			function onRotateDragEnd() {
+				currentRotateDrag = null;
+				document.removeEventListener('pointermove', onRotateDragMove);
+				document.removeEventListener('pointerup', onRotateDragEnd);
+			}
+
+			function rebuildUserList() {
+				var tbody = document.getElementById('set_userList');
+				tbody.innerHTML = '';
+				save_userList.forEach(function(u) {
+					var el = document.getElementById('token_' + u.id);
+					if (!el) return;
+					var im = el.children[0].children[0];
+					var hp = el.querySelector('.token-hp');
+					var hpMax = hp ? (parseInt(hp.getAttribute('hp_max')) || 20) : 20;
+					var fill = hp ? hp.querySelector('.token-hp-fill') : null;
+					var pct = fill ? (parseFloat(fill.style.width) || 100) : 100;
+					buildTokenListRows({
+						id: u.id,
+						imgSrc: im.src,
+						imgAlt: im.alt,
+						hpMax: hpMax,
+						hpCur: Math.round(hpMax * pct / 100),
+						hpShow: hp ? hp.style.display !== 'none' : true
+					});
+				});
+			}
+
+			/* ================================================================ */
+			/* 地图创建                                                         */
+			/* ================================================================ */
+			function calcMapPosition(w, h) {
+				var isHex = document.getElementById('box_hexagon').checked;
+				var renderW = w;
+				var renderH = isHex ? h * 1.1547 : h;
+
+				var lv = document.getElementById('map_pos_left').value.trim();
+				var tv = document.getElementById('map_pos_top').value.trim();
+
+				// 用户在编辑里显式填了位置：直接用（编辑场景）
+				if (lv !== '' && !isNaN(parseFloat(lv)) && tv !== '' && !isNaN(parseFloat(tv))) {
+					return {
+						left: parseFloat(lv),
+						top: parseFloat(tv)
+					};
+				}
+
+				// 新建：把"视口中心 → 最近格心"，再用渲染后尺寸倒推左上角
+				var c = getViewportCenterEm();
+				var cell = positionToCell(c.x, c.y, 0, 0, isHex);
+				var cellPos = cellToPosition(cell.x, cell.y, 0, 0, isHex);
+
+				return {
+					left: cellPos.left - renderW / 2,
+					top: cellPos.top - renderH / 2
+				};
+			}
+
+			function getViewportCenterEm() {
+				var rect = document.getElementById('map_main').getBoundingClientRect();
+				var fs = parseFloat(getComputedStyle(document.getElementById('map_main')).fontSize);
+				return {
+					x: (rect.width / 2) / fs,
+					y: (rect.height / 2) / fs
+				};
+			}
+
+			function addNewMap(edit = 0) {
+				var img = document.getElementById('newMapImg');
+				var id;
+				if (edit) {
+					id = edit;
+				} else {
+					var maxId = 0;
+					for (var mi = 0; mi < save_mapList.length; mi++) {
+						if (save_mapList[mi].id > maxId) maxId = save_mapList[mi].id;
+					}
+					id = maxId + 1;
+				}
+				var mode = getCurrentMapMode();
+
+				// 原始尺寸/样式一律从 UI + 模式推导，不读 img.style（预览可能是拉伸后的视觉值）
+				var w = parseFloat(document.getElementById('map_size_x').value) || 3;
+				var h = parseFloat(document.getElementById('map_size_y').value) || 3;
+				var bgImg = img.style.backgroundImage || getComputedStyle(img).backgroundImage;
+
+				var bgRepeat, bgPos, bgSize;
+				if (mode === 'object') {
+					bgRepeat = 'no-repeat';
+					bgPos = 'center';
+					bgSize = 'contain';
+				} else {
+					bgRepeat = 'repeat';
+					bgPos = '';
+					var tx = parseFloat(document.getElementById('map_tiled_x').value) || 3;
+					var ty = parseFloat(document.getElementById('map_tiled_y').value) || 3;
+					bgSize = tx + 'em ' + ty + 'em';
+				}
+
+				if (edit) {
+					var el = document.getElementById('map_' + id);
+					if (!el) return;
+					var im = el.children[0].children[0];
+					var lv = document.getElementById('map_pos_left').value.trim();
+					var tv = document.getElementById('map_pos_top').value.trim();
+					if (lv !== '' && !isNaN(parseFloat(lv))) el.style.left = Math.floor(parseFloat(lv)) + 'em';
+					if (tv !== '' && !isNaN(parseFloat(tv))) el.style.top = Math.floor(parseFloat(tv)) + 'em';
+					im.style.backgroundImage = bgImg;
+					if (bgRepeat) im.style.backgroundRepeat = bgRepeat;
+					if (bgPos) im.style.backgroundPosition = bgPos;
+
+					im.dataset.origW = w;
+					im.dataset.origH = h;
+					im.dataset.origBgSize = bgSize;
+					applyMapRenderSize(im);
+
+					rebuildMapList();
+				} else {
+					var pos = calcMapPosition(w, h);
+					var opts = {
+						id: id,
+						left: pos.left,
+						top: pos.top,
+						bgImg: bgImg,
+						bgSize: bgSize,
+						bgRepeat: bgRepeat,
+						bgPos: bgPos,
+						w: w,
+						h: h,
+						visible: true
+					};
+					document.getElementById('token_bg').appendChild(buildMapDom(opts));
+					save_mapList.unshift({
+						id: id
+					});
+					rebuildMapList();
+					rebuildMapLayers();
+				}
+			}
+
+			function openMapEditor(id) {
+				var el = document.getElementById('map_' + id);
+				if (!el) return;
+				var img = document.getElementById('newMapImg');
+				var im = el.children[0].children[0];
+
+				// 恢复类型（只是切 radio + 显隐 tile 行，不改预览）
+				var isObject = im.style.backgroundRepeat === 'no-repeat';
+				document.getElementById(isObject ? 'map_mode_object' : 'map_mode_tile').checked = true;
+				onMapModeChange();
+
+				// 背景图
+				var bg = im.style.backgroundImage || '';
+				document.getElementById('map_img_src').value =
+					bg.indexOf('url(') === 0 ? bg.slice(5, bg.length - 2) : '图片数据';
+				img.style.backgroundImage = bg;
+
+				// 原始尺寸 / 原始平铺
+				var origW = parseFloat(im.dataset.origW) || parseFloat(im.style.width) || 3;
+				var origH = parseFloat(im.dataset.origH) || parseFloat(im.style.height) || 3;
+				var origBg = im.dataset.origBgSize || im.style.backgroundSize || '3em 3em';
+
+				// 回填 UI（只设 value，不触发 onchange）
+				document.getElementById('map_size_x').value = origW;
+				document.getElementById('map_size_y').value = origH;
+				var bs = origBg.split(' ');
+				if (bs.length === 2) {
+					document.getElementById('map_tiled_x').value = parseFloat(bs[0]) || 3;
+					document.getElementById('map_tiled_y').value = parseFloat(bs[1]) || 3;
+				}
+
+				// 预览样式：直接设 style（素材模式一律 contain，不受平铺输入框影响）
+				var isHex = document.getElementById('box_hexagon').checked;
+				img.style.width = origW + 'em';
+				img.style.height = (isObject && isHex ? origH * 1.1547 : origH) + 'em';
+				if (isObject) {
+					img.style.backgroundSize = 'contain';
+					img.style.backgroundRepeat = 'no-repeat';
+					img.style.backgroundPosition = 'center';
+				} else {
+					img.style.backgroundSize = origBg;
+					img.style.backgroundRepeat = 'repeat';
+					img.style.backgroundPosition = '';
+				}
+
+				// 位置
+				document.getElementById('map_pos_left').value = parseFloat(el.style.left) || 0;
+				document.getElementById('map_pos_top').value = parseFloat(el.style.top) || 0;
+				img.style.left = (parseFloat(el.style.left) || 0) + 'em';
+				img.style.top = (parseFloat(el.style.top) || 0) + 'em';
+
+				document.getElementById('bt_changeMap').style.display = 'inline-block';
+				openModal('newMap');
+			}
+
+			/* ================================================================ */
+			/* 角色创建                                                         */
+			/* ================================================================ */
+			function addNewToken(edit = 0) {
+				var img = document.getElementById('newTokenImg');
+				var id;
+				if (edit) {
+					id = edit;
+				} else {
+					var maxId = 0;
+					for (var mi = 0; mi < save_userList.length; mi++) {
+						if (save_userList[mi].id > maxId) maxId = save_userList[mi].id;
+					}
+					id = maxId + 1;
+				}
+				var hpMax = parseInt(document.getElementById('token_hp_max').value) || 20;
+				var hpShow = document.getElementById('token_hp_show').checked;
+				var w = parseFloat(img.style.width) || 1;
+				var h = parseFloat(img.style.height) || 1;
+
+				if (edit) {
+					var el = document.getElementById('token_' + id);
+					if (!el) return;
+					var im = el.children[0].children[0];
+					im.src = img.src;
+					im.alt = img.alt;
+					im.title = img.alt + '\n点击移动';
+					im.style.width = w + 'em';
+					im.style.height = h + 'em';
+
+					var hp = el.querySelector('.token-hp');
+					if (hp) {
+						hp.setAttribute('hp_max', hpMax);
+						hp.style.display = hpShow ? '' : 'none';
+						var fill = hp.querySelector('.token-hp-fill');
+						var pct = fill ? (parseFloat(fill.style.width) || 100) : 100;
+						if (pct > 100) pct = 100;
+						fill.style.width = pct + '%';
+						hp.classList.toggle('low', pct / 100 <= 0.25);
+					}
+					rebuildUserList();
+				} else {
+					var c = getViewportCenterEm();
+					var isHex = document.getElementById('box_hexagon').checked;
+					var snapped = snapToGrid(c.x - w / 2, c.y - h / 2, w, h, isHex);
+					var opts = {
+						id: id,
+						left: snapped.left,
+						top: snapped.top,
+						imgSrc: img.src,
+						imgAlt: img.alt,
+						w: w,
+						h: h,
+						hpMax: hpMax,
+						hpCur: hpMax,
+						hpShow: hpShow
+					};
+					document.getElementById('token_user').appendChild(buildTokenDom(opts));
+					buildTokenListRows(opts);
+					save_userList.push({
+						id: id
+					});
+				}
+			}
+
+			function openTokenEditor(id) {
+				var el = document.getElementById('token_' + id);
+				if (!el) return;
+				var imgPreview = document.getElementById('newTokenImg');
+				var im = el.children[0].children[0];
+
+				// 关键：先把预览设成该角色的真实图像（不要用 imgPreview.src 去回填）
+				imgPreview.src = im.src;
+				imgPreview.alt = im.alt || '';
+				imgPreview.title = im.alt || '';
+				imgPreview.style.width = im.style.width;
+				imgPreview.style.height = im.style.height;
+
+				document.getElementById('token_name').value = im.alt || '角色名';
+
+				// 反推 tokenImgSource
+				var srcVal = im.src || '';
+				if (srcVal.indexOf('data:image/svg+xml,') === 0) {
+					var decoded = '';
+					try {
+						decoded = decodeURIComponent(srcVal.replace('data:image/svg+xml,', ''));
+					} catch (e) {}
+					var m = decoded.match(/<text[^>]*>([\s\S]*?)<\/text>/);
+					var text = m ? m[1] : '';
+					var nameFirst = '';
+					if (window.Intl && Intl.Segmenter) {
+						var seg = new Intl.Segmenter('zh', {
+							granularity: 'grapheme'
+						});
+						var it = seg.segment(im.alt || '')[Symbol.iterator]();
+						var r = it.next();
+						if (!r.done) nameFirst = r.value.segment;
+					}
+					if (text && text !== nameFirst) {
+						tokenImgSource = 'preset';
+						tokenPresetIcon = text;
+					} else {
+						tokenImgSource = 'name';
+						tokenPresetIcon = '';
+					}
+				} else {
+					tokenImgSource = 'custom';
+					tokenPresetIcon = '';
+				}
+
+				document.getElementById('token_img_src').value = srcVal.length <= 500 ? srcVal : '图片数据';
+				document.getElementById('token_size_x').value = parseFloat(im.style.width) || 1;
+				document.getElementById('token_size_y').value = parseFloat(im.style.height) || 1;
+
+				var hp = el.querySelector('.token-hp');
+				document.getElementById('token_hp_show').checked = hp && hp.style.display !== 'none';
+				document.getElementById('token_hp_max').value = hp ? (hp.getAttribute('hp_max') || 20) : 20;
+
+				document.getElementById('bt_changeToken').style.display = 'inline-block';
+				updateColorBoxState();
+				openModal('newToken');
+			}
+
+			/* ================================================================ */
+			/* 存档 / 导入                                                     */
+			/* ================================================================ */
+			function exportData() {
+				var data = {
+					version: 4,
+					isHex: document.getElementById('box_hexagon').checked,
+					halfGrid: document.getElementById('halfGridToggle').checked,
+					boxSize: parseInt(document.getElementById('boxSize').value) || 40,
+					gridOffsetX: gridOffsetX,
+					gridOffsetY: gridOffsetY,
+					tokens: [],
+					maps: [],
+					terrain: Object.assign({}, terrainGrid)
+				};
+
+				/* ---- 角色 ---- */
+				var tokenUser = document.getElementById('token_user');
+				var tokenIdx = 1;
+				for (var i = 0; i < tokenUser.children.length; i++) {
+					var el = tokenUser.children[i];
+					if (!el.id || el.id.indexOf('token_') !== 0) continue;
+					var im = el.children[0].children[0];
+					var hp = el.querySelector('.token-hp');
+					var hpMax = hp ? (parseInt(hp.getAttribute('hp_max')) || 20) : 20;
+					var fill = hp ? hp.querySelector('.token-hp-fill') : null;
+					var pct = fill ? (parseFloat(fill.style.width) || 100) : 100;
+					data.tokens.push({
+						id: tokenIdx,
+						left: parseFloat(el.style.left) || 0,
+						top: parseFloat(el.style.top) || 0,
+						imgSrc: im.src,
+						imgAlt: im.alt || '',
+						w: parseFloat(im.style.width) || 1,
+						h: parseFloat(im.style.height) || 1,
+						hpMax: hpMax,
+						hpCur: Math.round(hpMax * pct / 100),
+						hpShow: hp ? hp.style.display !== 'none' : true,
+						locked: el.dataset.locked === '1'
+					});
+					tokenIdx++;
+				}
+
+				/* ---- 地图 ---- */
+				var tokenBg = document.getElementById('token_bg');
+				var mapIdx = 1;
+				for (var j = 0; j < tokenBg.children.length; j++) {
+					var mel = tokenBg.children[j];
+					if (!mel.id || mel.id.indexOf('map_') !== 0) continue;
+					var mim = mel.children[0].children[0];
+					data.maps.push({
+						id: mapIdx,
+						left: parseFloat(mel.style.left) || 0,
+						top: parseFloat(mel.style.top) || 0,
+						bgImg: mim.style.backgroundImage || '',
+						bgSize: mim.dataset.origBgSize || mim.style.backgroundSize || '3em 3em',
+						bgRepeat: mim.style.backgroundRepeat || 'repeat',
+						bgPos: mim.style.backgroundPosition || '',
+						w: parseFloat(mim.dataset.origW) || 3,
+						h: parseFloat(mim.dataset.origH) || 3,
+						visible: mel.style.display !== 'none',
+						rotation: parseFloat(mel.dataset.rotation) || 0,
+						locked: mel.dataset.locked === '1'
+					});
+					mapIdx++;
+				}
+
+				var blob = new Blob([JSON.stringify(data, null, 2)], {
+					type: 'application/json'
+				});
+				var url = URL.createObjectURL(blob);
+				var a = document.createElement('a');
+				a.href = url;
+				a.download = 'paotuan-' + new Date().toISOString().slice(0, 10) + '.json';
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+				setTimeout(function() {
+					URL.revokeObjectURL(url);
+				}, 1000);
+			}
+
+			function importData() {
+				var input = document.createElement('input');
+				input.type = 'file';
+				input.accept = 'application/json';
+				input.onchange = function() {
+					if (!input.files[0]) return;
+					var fr = new FileReader();
+					fr.readAsText(input.files[0]);
+					fr.onload = function() {
+						try {
+							var data = JSON.parse(fr.result);
+							applyImportedData(data);
+						} catch (e) {
+							alert('导入失败：' + e.message);
+						}
+					};
+				};
+				input.click();
+			}
+
+			function applyImportedData(data) {
+				if (!data) return;
+				if (!confirm('导入将清空当前地图与角色，确定继续？')) return;
+
+				/* ---- 清空所有 ---- */
+				document.getElementById('token_user').innerHTML = '';
+				document.getElementById('token_bg').innerHTML = '';
+				document.getElementById('terrain_svg').innerHTML = '';
+				document.getElementById('set_userList').innerHTML = '';
+				document.getElementById('set_mapList').innerHTML = '';
+				save_userList = [];
+				save_mapList = [];
+				terrainGrid = {};
+				terrainElements = {};
+				onMouse = null;
+				mapDrag = null;
+				if (typeof hideSelection === 'function') hideSelection();
+
+				/* ---- 格子 ---- */
+				var isHex = !!data.isHex;
+				document.getElementById('box_square').checked = !isHex;
+				document.getElementById('box_hexagon').checked = isHex;
+				currentGridIsHex = isHex;
+				var hg = !!data.halfGrid;
+				document.getElementById('halfGridToggle').checked = hg;
+				halfGridMode = hg;
+				document.getElementById('map_line').style.display = isHex ? 'none' : 'block';
+				document.getElementById('map_line_hexagon').style.display = isHex ? 'block' : 'none';
+
+				var bs = parseInt(data.boxSize) || 40;
+				document.getElementById('boxSize').value = bs;
+				document.getElementById('map_main').style.fontSize = bs + 'px';
+
+				/* ---- 网格偏移 ---- */
+				gridOffsetX = 0;
+				gridOffsetY = 0;
+				updateGridOffset(parseFloat(data.gridOffsetX) || 0, parseFloat(data.gridOffsetY) || 0);
+				document.getElementById('terrain_layer').style.left = (parseFloat(data.gridOffsetX) || 0) + 'em';
+				document.getElementById('terrain_layer').style.top = (parseFloat(data.gridOffsetY) || 0) + 'em';
+
+				/* ---- 角色 ---- */
+				(data.tokens || []).forEach(function(t) {
+					var opts = {
+						id: t.id,
+						left: t.left || 0,
+						top: t.top || 0,
+						imgSrc: t.imgSrc || 'data:image/svg+xml,',
+						imgAlt: t.imgAlt || 'token',
+						w: t.w || 1,
+						h: t.h || 1,
+						hpMax: t.hpMax || 20,
+						hpCur: t.hpCur != null ? t.hpCur : (t.hpMax || 20),
+						hpShow: t.hpShow !== false,
+						locked: !!t.locked
+					};
+					document.getElementById('token_user').appendChild(buildTokenDom(opts));
+					save_userList.push({
+						id: opts.id
+					});
+				});
+
+				/* ---- 地图（只一次！）---- */
+				(data.maps || []).forEach(function(m) {
+					var opts = {
+						id: m.id,
+						left: m.left || 0,
+						top: m.top || 0,
+						bgImg: m.bgImg || 'none',
+						bgSize: m.bgSize || '3em 3em',
+						bgRepeat: m.bgRepeat || 'repeat',
+						bgPos: m.bgPos || '',
+						w: m.w || 3,
+						h: m.h || 3,
+						visible: m.visible !== false,
+						rotation: m.rotation || 0,
+						locked: !!m.locked
+					};
+					document.getElementById('token_bg').appendChild(buildMapDom(opts));
+					save_mapList.push({
+						id: opts.id
+					});
+				});
+
+				/* ---- 重建图层列表 ---- */
+				rebuildUserList();
+				rebuildUserLayers();
+				rebuildMapList();
+				rebuildMapLayers();
+
+				/* ---- 地形 ---- */
+				terrainGrid = data.terrain || {};
+				redrawTerrain();
+			}
+
+			/* ================================================================ */
+			/* 地形绘制                                                        */
+			/* ================================================================ */
+			function toggleDrawMode(checked) {
+				// 开启绘制 → 先关闭地图拖拽
+				if (checked && mapDragMode) {
+					mapDragMode = false;
+					document.getElementById('mapDragMode').checked = false;
+					document.querySelectorAll('#token_bg > .map-elem').forEach(function(el) {
+						el.classList.remove('map-draggable');
+					});
+					if (mapDrag) finishMapDrag(null);
+					hideSelection();
+				}
+
+				drawMode = checked;
+				var layer = document.getElementById('terrain_layer');
+				var tokenUser = document.getElementById('token_user');
+				var tokenBg = document.getElementById('token_bg');
+				if (checked) {
+					layer.classList.add('painting');
+					tokenUser.style.pointerEvents = 'none';
+					tokenBg.style.pointerEvents = 'none';
+				} else {
+					layer.classList.remove('painting');
+					tokenUser.style.pointerEvents = '';
+					tokenBg.style.pointerEvents = '';
+				}
+			}
+
+			function getCellFromEvent(e) {
+				var mapMain = document.getElementById('map_main');
+				var rect = mapMain.getBoundingClientRect();
+				var fs = parseFloat(getComputedStyle(mapMain).fontSize);
+				var layer = document.getElementById('terrain_layer');
+				var layerLeft = parseFloat(layer.style.left) || 0;
+				var layerTop = parseFloat(layer.style.top) || 0;
+
+				var emX = (e.clientX - rect.left) / fs - layerLeft;
+				var emY = (e.clientY - rect.top) / fs - layerTop;
+
+				if (!document.getElementById('box_hexagon').checked) {
+					return {
+						x: Math.floor(emX),
+						y: Math.floor(emY)
+					};
+				} else {
+					var row = Math.round((emY - HEX_CENTER_Y) / HEX_ROW_H);
+					var parity = ((row % 2) + 2) % 2;
+					var xOffset = 0.5 + parity * 0.5;
+					var col = Math.round(emX - xOffset);
+					return {
+						x: col,
+						y: row
+					};
+				}
+			}
+
+			function createTerrainElement(cellX, cellY, terrain) {
+				var fs = parseFloat(getComputedStyle(document.getElementById('map_main')).fontSize);
+				var isHex = document.getElementById('box_hexagon').checked;
+				var color = terrainColors[terrain] || '#888888';
+
+				if (!isHex) {
+					var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+					rect.setAttribute('x', cellX * fs + TERRAIN_OFFSET);
+					rect.setAttribute('y', cellY * fs + TERRAIN_OFFSET);
+					rect.setAttribute('width', fs);
+					rect.setAttribute('height', fs);
+					rect.setAttribute('fill', color);
+					rect.setAttribute('opacity', '0.68');
+					return rect;
+				} else {
+					var parity = ((cellY % 2) + 2) % 2;
+					var xOffset = parity * 0.5;
+					var cx = (cellX + 0.5 + xOffset) * fs + TERRAIN_OFFSET;
+					var cy = (cellY * HEX_ROW_H + HEX_CENTER_Y) * fs + TERRAIN_OFFSET;
+					var R = fs * 0.5774;
+					var halfW = fs / 2;
+					var halfR = R / 2;
+					var pts = [
+						[cx, cy - R],
+						[cx + halfW, cy - halfR],
+						[cx + halfW, cy + halfR],
+						[cx, cy + R],
+						[cx - halfW, cy + halfR],
+						[cx - halfW, cy - halfR]
+					].map(function(p) {
+						return p.join(',');
+					}).join(' ');
+					var poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+					poly.setAttribute('points', pts);
+					poly.setAttribute('fill', color);
+					poly.setAttribute('opacity', '0.68');
+					return poly;
+				}
+			}
+
+			function redrawTerrain() {
+				var svg = document.getElementById('terrain_svg');
+				svg.innerHTML = '';
+				terrainElements = {};
+				for (var key in terrainGrid) {
+					var parts = key.split(',');
+					var el = createTerrainElement(parseInt(parts[0], 10), parseInt(parts[1], 10), terrainGrid[key]);
+					if (el) {
+						svg.appendChild(el);
+						terrainElements[key] = el;
+					}
+				}
+			}
+
+			function clearAllTerrain() {
+				if (!confirm('确定清除所有已绘制地形？')) return;
+				terrainGrid = {};
+				terrainElements = {};
+				document.getElementById('terrain_svg').innerHTML = '';
+			}
+
+			(function initTerrainDrawing() {
+				var layer = document.getElementById('terrain_layer');
+				var svg = document.getElementById('terrain_svg');
+				var isPainting = false;
+				var lastCellKey = null;
+
+				function paintAt(e) {
+					var cell = getCellFromEvent(e);
+					var key = cell.x + ',' + cell.y;
+					if (key === lastCellKey) return;
+					lastCellKey = key;
+
+					if (currentTerrain === 'erase') {
+						delete terrainGrid[key];
+						if (terrainElements[key]) {
+							terrainElements[key].remove();
+							delete terrainElements[key];
+						}
+					} else {
+						terrainGrid[key] = currentTerrain;
+						if (terrainElements[key]) terrainElements[key].remove();
+						var el = createTerrainElement(cell.x, cell.y, currentTerrain);
+						if (el) {
+							svg.appendChild(el);
+							terrainElements[key] = el;
+						}
+					}
+				}
+
+				layer.addEventListener('pointerdown', function(e) {
+					if (!drawMode || e.button !== 0) return;
+					isPainting = true;
+					lastCellKey = null;
+					paintAt(e);
+					layer.setPointerCapture(e.pointerId);
+				});
+				layer.addEventListener('pointermove', function(e) {
+					if (!drawMode || !isPainting) return;
+					paintAt(e);
+				});
+
+				function endPaint(e) {
+					if (!isPainting) return;
+					isPainting = false;
+					lastCellKey = null;
+					if (layer.hasPointerCapture && layer.hasPointerCapture(e.pointerId)) layer.releasePointerCapture(e
+						.pointerId);
+				}
+				layer.addEventListener('pointerup', endPaint);
+				layer.addEventListener('pointercancel', endPaint);
+			})();
+		</script>
+	</body>
+</html>
